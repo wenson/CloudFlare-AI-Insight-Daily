@@ -12,7 +12,6 @@
     *   **AI 模型 API**: 集成 Google Gemini 和 OpenAI 兼容 API，为内容摘要和再创作提供强大的 AI 支持。
     *   **内容源 API**:
         *   **Folo API**: 默认的信息聚合来源，可灵活配置抓取不同的 Folo 源。
-        *   **GitHub Trending API**: 获取 GitHub 每日热门项目，追踪开源趋势。
     *   **发布渠道 API**:
         *   **GitHub API**: 用于将处理好的内容自动推送到指定的 GitHub 仓库。
 *   **🛠️ Wrangler**: Cloudflare官方的命令行工具，用于项目的本地开发、环境配置和一键部署。
@@ -98,15 +97,15 @@ FOLO_COOKIE_KV_KEY = "folo_auth_cookie"
 FOLO_DATA_API = "https://api.follow.is/entries"
 FOLO_FILTER_DAYS = "1"
 
-# 其他内容源 ID 和抓取页数...
-AIBASE_FEED_ID = "......" 
-AIBASE_FETCH_PAGES = "2" 
-XIAOHU_FEED_ID = "......" 
-XIAOHU_FETCH_PAGES = "2" 
-HGPAPERS_FEED_ID = "......"
-HGPAPERS_FETCH_PAGES = "2" 
+# 内容源 ID 和抓取页数...
+NEWS_AGGREGATOR_LIST_ID = "......"
+NEWS_AGGREGATOR_FETCH_PAGES = "2"
+HGPAPERS_LIST_ID = "......"
+HGPAPERS_FETCH_PAGES = "2"
 TWITTER_LIST_ID = "......"
-TWITTER_FETCH_PAGES = "2" 
+TWITTER_FETCH_PAGES = "2"
+REDDIT_LIST_ID = "......"
+REDDIT_FETCH_PAGES = "2" 
 ```
 
 #### 3. 本地开发与调试

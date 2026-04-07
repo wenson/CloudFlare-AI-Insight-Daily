@@ -1,6 +1,5 @@
 // src/dataFetchers.js
 import NewsAggregatorDataSource from './dataSources/newsAggregator.js';
-import GithubTrendingDataSource from './dataSources/github-trending.js';
 import PapersDataSource from './dataSources/papers.js';
 import TwitterDataSource from './dataSources/twitter.js';
 import RedditDataSource from './dataSources/reddit.js';
@@ -9,7 +8,6 @@ import RedditDataSource from './dataSources/reddit.js';
 // Register data sources as arrays to support multiple sources per type
 export const dataSources = {
     news: { name: '新闻', sources: [NewsAggregatorDataSource] },
-    project: { name: '项目', sources: [GithubTrendingDataSource] },
     paper: { name: '论文', sources: [PapersDataSource] },
     socialMedia: { name: '社交平台', sources: [TwitterDataSource, RedditDataSource] },
     // Add new data sources here as arrays, e.g.,
@@ -18,7 +16,7 @@ export const dataSources = {
 
 /**
  * Fetches and transforms data from all data sources for a specified type.
- * @param {string} sourceType - The type of data source (e.g., 'news', 'projects', 'papers').
+ * @param {string} sourceType - The type of data source (e.g., 'news', 'paper', 'socialMedia').
  * @param {object} env - The environment variables.
  * @param {string} [foloCookie] - The Folo authentication cookie.
  * @returns {Promise<Array<object>>} A promise that resolves to an array of unified data objects from all sources of that type.
@@ -79,7 +77,7 @@ export async function fetchAllData(env, foloCookie) {
 /**
  * Fetches and transforms data from all data sources for a specific category.
  * @param {object} env - The environment variables.
- * @param {string} category - The category to fetch data for (e.g., 'news', 'project', 'paper', 'twitter').
+ * @param {string} category - The category to fetch data for (e.g., 'news', 'paper', 'socialMedia').
  * @param {string} [foloCookie] - The Folo authentication cookie.
  * @returns {Promise<Array<object>>} A promise that resolves to an array of unified data objects for the specified category.
  */

@@ -6,7 +6,7 @@
     -   在 `src/dataSources/` 目录下创建一个新的 JavaScript 文件，例如 `src/dataSources/yourNewDataSource.js`。
     -   这个文件需要导出一个包含两个核心方法的对象：
         -   `fetch(env)`：一个异步函数，负责从外部 API 获取原始数据。`env` 参数包含了 `wrangler.toml` 中配置的环境变量，你可以利用这些变量来配置 API 密钥、URL 等。
-        -   `transform(rawData, sourceType)`：一个函数，负责将 `fetch` 方法获取到的原始数据转换为项目统一的数据格式。统一格式应包含 `id`, `url`, `title`, `content_html` (或 `description`), `date_published` (或 `pubDate`), `authors` (或 `author`) 等字段，以便项目能够正确处理和展示。`sourceType` 参数表示当前数据源的类型（例如 'news', 'project'）。
+        -   `transform(rawData, sourceType)`：一个函数，负责将 `fetch` 方法获取到的原始数据转换为项目统一的数据格式。统一格式应包含 `id`, `url`, `title`, `content_html` (或 `description`), `date_published` (或 `pubDate`), `authors` (或 `author`) 等字段，以便项目能够正确处理和展示。`sourceType` 参数表示当前数据源的类型（例如 'news', 'paper', 'socialMedia'）。
         -   `generateHtml(item)` (可选)：一个函数，如果该数据源的内容需要特定的 HTML 渲染方式，则实现此方法。它接收一个统一格式的 `item` 对象，并返回用于在前端页面展示的 HTML 字符串。如果未提供此方法，系统将使用默认的 HTML 渲染逻辑。注意：同一分类下，只有第一个数据源需要实现 `generateHtml` 方法。
 
     **示例 `src/dataSources/yourNewDataSource.js` 结构：**
@@ -53,7 +53,7 @@
 
 3.  **注册新的数据源**：
     -   在 `src/dataFetchers.js` 文件中找到 `dataSources` 对象。
-    -   根据你的需求，将新的数据源添加到现有类型（如 `news`, `project`, `paper`, `socialMedia`）的 `sources` 数组中，或者创建一个新的数据类型并添加进去。
+    -   根据你的需求，将新的数据源添加到现有类型（如 `news`, `paper`, `socialMedia`）的 `sources` 数组中，或者创建一个新的数据类型并添加进去。
     -   **添加到现有类型示例**：
         ```javascript
         export const dataSources = {

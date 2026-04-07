@@ -24,7 +24,7 @@ function generateHtmlListForContentPage(items, dateStr) {
             displayContent = dataSourceConfig.sources[0].generateHtml(item);
         } else {
             // Fallback for unknown types or if generateHtml is not defined
-            displayContent = `<strong>未知项目类型: ${escapeHtml(item.type)}</strong><br>${escapeHtml(item.title || item.description || JSON.stringify(item))}`;
+            displayContent = `<strong>未知内容类型: ${escapeHtml(item.type)}</strong><br>${escapeHtml(item.title || item.description || JSON.stringify(item))}`;
         }
 
         listHtml += `<li class="item-card">
