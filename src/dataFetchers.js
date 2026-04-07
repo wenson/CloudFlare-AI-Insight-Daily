@@ -82,7 +82,7 @@ export async function fetchAllData(env, foloCookie) {
  * @returns {Promise<Array<object>>} A promise that resolves to an array of unified data objects for the specified category.
  */
 export async function fetchDataByCategory(env, category, foloCookie) {
-    if (!dataSources[category]) {
+    if (!Object.hasOwn(dataSources, category)) {
         console.warn(`Attempted to fetch data for unknown category: ${category}`);
         return [];
     }

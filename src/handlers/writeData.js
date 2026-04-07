@@ -25,6 +25,15 @@ export async function handleWriteData(request, env) {
         let successMessage = '';
 
         if (category) {
+            if (!Object.hasOwn(dataSources, category)) {
+                return new Response(JSON.stringify({
+                    success: false,
+                    message: `Unknown category: ${category}`
+                }), {
+                    status: 400,
+                    headers: { 'Content-Type': 'application/json' }
+                });
+            }
             // 只抓取指定分类的数据
             const fetchedData = await fetchDataByCategory(env, category, foloCookie); // 传递 foloCookie
             dataToStore[category] = fetchedData;
