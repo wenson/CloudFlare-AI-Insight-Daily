@@ -1,10 +1,10 @@
 # 接口路由图
 
-本文说明 Worker 当前暴露的核心路由、每个路由的职责、输入输出方向，以及它们之间的调用关系。适合排查请求入口、理解页面操作背后的后端流程、或准备新增接口时阅读。本文基于当前 `src/index.js` 与对应 handlers 的实际实现。
+本文说明 Worker 当前暴露的核心路由、每个路由的职责，以及它们之间的关系。本文基于当前 [src/index.js](/Volumes/c/Workspace/CloudFlare-AI-Insight-Daily/src/index.js) 的实际实现。
 
 ## 一句话结论
 
-本项目的接口分为四类：`认证`、`数据抓取/查看`、`AI 生成`、`发布输出`。其中主流程是：`/getContentHtml → /writeData → /genAIContent → /commitToGitHub`。
+本项目当前接口分为四类：`认证`、`数据抓取/查看`、`AI 生成`、`RSS 输出`。主流程是：`/getContentHtml → /writeData → /genAIContent`，生成成功后会自动写入 D1，并由 `/rss` 输出摘要。
 
 ## 总体路由关系图
 
@@ -13,18 +13,14 @@ flowchart TD
     A[/login/] --> B[/getContentHtml/]
     B --> C[/writeData/]
     B --> D[/getContent/]
+    B --> J[/rss/]
     B --> E[/genAIContent/]
 
     E --> F[/genAIPodcastScript/]
     E --> G[/genAIDailyAnalysis/]
-    E --> H[/commitToGitHub/]
+    E --> H[/genAIDailyPage/]
 
-    H --> I[GitHub daily/ podcast/]
-    I --> J[/generateRssContent/]
-    J --> K[/writeRssData/]
-    K --> L[/rss/]
-
-    B --> M[/logout/]
+    B --> I[/logout/]
 ```
 
 ## 用户操作时序图
@@ -34,8 +30,8 @@ sequenceDiagram
     participant U as 用户浏览器
     participant W as Worker
     participant KV as Cloudflare KV
+    participant D1 as Cloudflare D1
     participant AI as Gemini/OpenAI
-    participant GH as GitHub
 
     U->>W: GET /getContentHtml
     W->>KV: 读取当天各分类内容
@@ -48,7 +44,9 @@ sequenceDiagram
     U->>W: POST /genAIContent
     W->>KV: 读取勾选条目
     W->>AI: 生成日报
-    AI-->>W: 返回日报内容
+    W->>AI: 生成 RSS 摘要
+    AI-->>W: 返回日报内容与 RSS 摘要
+    W->>D1: upsert 当天日报记录
     W-->>U: 返回日报结果页
 
     U->>W: POST /genAIPodcastScript
@@ -56,9 +54,10 @@ sequenceDiagram
     AI-->>W: 返回播客内容
     W-->>U: 返回播客结果页
 
-    U->>W: POST /commitToGitHub
-    W->>GH: 写入 Markdown
-    GH-->>W: 返回提交结果
+    U->>W: GET /rss
+    W->>D1: 读取最近 N 天摘要
+    D1-->>W: 返回日报摘要
+    W-->>U: 返回 RSS XML
 ```
 
 ## 路由分组说明
@@ -83,19 +82,16 @@ sequenceDiagram
 
 | 路由 | 方法 | 作用 | 主要读写 |
 | --- | --- | --- | --- |
-| `/genAIContent` | `POST` | 根据勾选内容生成日报 | 读 KV，调用 AI |
-| `/genAIPodcastScript` | `POST` | 根据日报内容生成播客稿 | 调用 AI，可读 GitHub 日报 |
+| `/genAIContent` | `POST` | 根据勾选内容生成日报并自动发布 RSS 摘要 | 读 KV，调 AI，写 D1 |
+| `/genAIPodcastScript` | `POST` | 根据日报内容生成播客稿 | 调用 AI |
 | `/genAIDailyAnalysis` | `POST` | 对日报做二次分析 | 调用 AI |
 | `/genAIDailyPage` | `GET` | 生成日报空白模板页 | 不依赖抓取数据 |
 
-### 4. 发布与输出路由
+### 4. RSS 输出路由
 
 | 路由 | 方法 | 作用 | 主要读写 |
 | --- | --- | --- | --- |
-| `/commitToGitHub` | `POST` | 将日报或播客保存到 GitHub | 写 GitHub |
-| `/generateRssContent` | `GET` | 基于日报生成 RSS 摘要稿 | 读 GitHub，调 AI，写 GitHub |
-| `/writeRssData` | `GET` | 将 RSS Markdown 转为 HTML 后写入 KV | 写 `YYYY-MM-DD-report` |
-| `/rss` | `GET` | 输出 RSS Feed | 从 KV 聚合 report |
+| `/rss` | `GET` | 输出最近 N 天的 RSS Feed | 读 D1 |
 
 ## 主流程拆解
 
@@ -105,11 +101,11 @@ sequenceDiagram
 
 ### 2. 抓取数据
 
-用户点击页面上的抓取按钮后，浏览器调用 `/writeData`，并把 `foloCookie` 放进请求体。Worker 再去请求 Folo，并把结果写回 KV。
+用户点击页面上的抓取按钮后，浏览器调用 `/writeData`，并把 `foloCookie` 放进请求体。Worker 请求 Folo，并把结果写回 KV。
 
 ### 3. 生成日报
 
-用户勾选条目后提交到 `/genAIContent`。Worker 先从 KV 读取被选中的条目，再拼成 prompt，调用 AI，最后返回结果页。
+用户勾选条目后提交到 `/genAIContent`。Worker 先从 KV 读取被选中的条目，再拼成 prompt 调用 AI，随后把日报正文与 RSS 摘要一起写入 D1，最后返回结果页。
 
 ### 4. 派生播客与分析
 
@@ -120,24 +116,23 @@ sequenceDiagram
 
 这两个接口都属于日报内容的派生加工。
 
-### 5. 发布到 GitHub 与 RSS
+### 5. RSS 输出
 
-日报或播客生成后，用户可调用 `/commitToGitHub` 写入仓库。之后再通过 `/generateRssContent` 与 `/writeRssData` 把日报摘要链路接到 RSS 输出。
+`/rss` 是公开只读接口。它直接从 D1 的日报记录里读取最近 N 天摘要，并拼成 RSS XML。
 
 ## 代码入口
 
-建议按以下顺序阅读代码：
+建议按以下顺序阅读：
 
-1. `src/index.js`
-2. `src/handlers/getContentHtml.js`
-3. `src/handlers/writeData.js`
-4. `src/handlers/genAIContent.js`
-5. `src/handlers/commitToGitHub.js`
-6. `src/handlers/writeRssData.js`
-7. `src/handlers/getRss.js`
+1. [src/index.js](/Volumes/c/Workspace/CloudFlare-AI-Insight-Daily/src/index.js)
+2. [src/handlers/getContentHtml.js](/Volumes/c/Workspace/CloudFlare-AI-Insight-Daily/src/handlers/getContentHtml.js)
+3. [src/handlers/writeData.js](/Volumes/c/Workspace/CloudFlare-AI-Insight-Daily/src/handlers/writeData.js)
+4. [src/handlers/genAIContent.js](/Volumes/c/Workspace/CloudFlare-AI-Insight-Daily/src/handlers/genAIContent.js)
+5. [src/d1.js](/Volumes/c/Workspace/CloudFlare-AI-Insight-Daily/src/d1.js)
+6. [src/handlers/getRss.js](/Volumes/c/Workspace/CloudFlare-AI-Insight-Daily/src/handlers/getRss.js)
 
 ## 边界说明
 
 - `/getContent` 与 `/rss` 是只读接口。
-- `/writeData`、`/genAIContent`、`/commitToGitHub` 属于状态推进接口。
-- 除 `/login`、`/logout`、`/getContent`、`/rss`、`/writeRssData`、`/generateRssContent` 外，其余大部分页面型操作受登录态保护。
+- `/writeData`、`/genAIContent`、`/genAIPodcastScript`、`/genAIDailyAnalysis` 属于状态推进接口。
+- 除 `/login`、`/logout`、`/getContent`、`/rss` 外，其余页面型操作受登录态保护。

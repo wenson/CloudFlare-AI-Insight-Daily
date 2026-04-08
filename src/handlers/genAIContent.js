@@ -1,17 +1,31 @@
 // src/handlers/genAIContent.js
-import { getISODate, escapeHtml, stripHtml, removeMarkdownCodeBlock, formatDateToChinese, convertEnglishQuotesToChinese} from '../helpers.js';
+import { getISODate, escapeHtml, stripHtml, removeMarkdownCodeBlock, formatDateToChinese, convertEnglishQuotesToChinese, formatMarkdownText } from '../helpers.js';
 import { getFromKV } from '../kv.js';
-import { callChatAPIStream } from '../chatapi.js';
+import { callChatAPI, callChatAPIStream } from '../chatapi.js';
 import { generateGenAiPageHtml } from '../htmlGenerators.js';
 import { dataSources } from '../dataFetchers.js'; // Import dataSources
 import { getSystemPromptSummarizationStepOne } from "../prompt/summarizationPromptStepZero";
 import { getSystemPromptSummarizationStepTwo } from "../prompt/summarizationPromptStepTwo";
 import { getSystemPromptSummarizationStepThree } from "../prompt/summarizationPromptStepThree";
+import { getSummarizationSimplifyPrompt } from '../prompt/summarizationSimplifyPrompt.js';
 import { getSystemPromptPodcastFormatting, getSystemPromptShortPodcastFormatting } from '../prompt/podcastFormattingPrompt.js';
 import { getSystemPromptDailyAnalysis } from '../prompt/dailyAnalysisPrompt.js'; // Import new prompt
 import { insertFoot } from '../foot.js';
 import { insertAd } from '../ad.js';
-import { getDailyReportContent } from '../github.js'; // 导入 getDailyReportContent
+import { getAppUrl } from '../appUrl.js';
+import { marked } from '../marked.esm.js';
+import { getDailyReportMetadata, upsertDailyReport } from '../d1.js';
+
+async function generateRssSummary(env, dailyMarkdownContent) {
+    let rssMarkdown = await callChatAPI(env, dailyMarkdownContent, getSummarizationSimplifyPrompt());
+    rssMarkdown = removeMarkdownCodeBlock(rssMarkdown);
+    rssMarkdown += `\n\n</br>${getAppUrl()}`;
+
+    return {
+        rssMarkdown: convertEnglishQuotesToChinese(rssMarkdown),
+        rssHtml: marked.parse(formatMarkdownText(rssMarkdown)),
+    };
+}
 
 export async function handleGenAIPodcastScript(request, env) {
     let dateStr;
@@ -28,25 +42,7 @@ export async function handleGenAIPodcastScript(request, env) {
         formData = await request.formData();
         dateStr = formData.get('date');
         selectedItemsParams = formData.getAll('selectedItems');
-        const readGithub = formData.get('readGithub') === 'true';
-
-        if (readGithub) {
-            const filePath = `daily/${dateStr}.md`;
-            console.log(`从 GitHub 读取文件: ${filePath}`);
-            try {
-                outputOfCall1 = await getDailyReportContent(env, filePath);
-                if (!outputOfCall1) {
-                    throw new Error(`从 GitHub 读取文件 ${filePath} 失败或内容为空。`);
-                }
-                console.log(`成功从 GitHub 读取文件，内容长度: ${outputOfCall1.length}`);
-            } catch (error) {
-                console.error(`读取 GitHub 文件出错: ${error}`);
-                const errorHtml = generateGenAiPageHtml(env, '生成AI播客脚本出错', `<p><strong>从 GitHub 读取文件失败:</strong> ${escapeHtml(error.message)}</p>${error.stack ? `<pre>${escapeHtml(error.stack)}</pre>` : ''}`, dateStr, true, null, null, null, null, null, null, outputOfCall1, null);
-                return new Response(errorHtml, { status: 500, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
-            }
-        } else {
-            outputOfCall1 = formData.get('summarizedContent'); // Get summarized content from form data
-        }
+        outputOfCall1 = formData.get('summarizedContent');
 
         if (!outputOfCall1) {
             const errorHtml = generateGenAiPageHtml(env, '生成AI播客脚本出错', '<p><strong>Summarized content is missing.</strong> Please go back and generate AI content first.</p>', dateStr, true, null, null, null, null, null, null, outputOfCall1, null);
@@ -297,6 +293,23 @@ export async function handleGenAIContent(request, env) {
         dailySummaryMarkdownContent += `\n\n${removeMarkdownCodeBlock(outputOfCall2)}`;
         if (env.INSERT_FOOT=='true') dailySummaryMarkdownContent += insertFoot() +`\n\n`;
 
+        const storedDailyMarkdown = convertEnglishQuotesToChinese(dailySummaryMarkdownContent);
+        const { rssMarkdown, rssHtml } = await generateRssSummary(env, storedDailyMarkdown);
+        const now = new Date().toISOString();
+        const existingMetadata = await getDailyReportMetadata(env.DB, dateStr);
+
+        await upsertDailyReport(env.DB, {
+            report_date: dateStr,
+            title: `${dateStr}日刊`,
+            daily_markdown: storedDailyMarkdown,
+            rss_markdown: rssMarkdown,
+            rss_html: rssHtml,
+            source_item_count: selectedItemsParams.length,
+            created_at: existingMetadata?.created_at || now,
+            updated_at: now,
+            published_at: existingMetadata?.published_at || now,
+        });
+
         const successHtml = generateGenAiPageHtml(
             env,
             'AI日报', // Title for Call 1 page
@@ -305,7 +318,7 @@ export async function handleGenAIContent(request, env) {
             fullPromptForCall2_System, fullPromptForCall2_User,
             null, null, // Pass Call 2 prompts
             convertEnglishQuotesToChinese(removeMarkdownCodeBlock(promptsMarkdownContent)),
-            convertEnglishQuotesToChinese(dailySummaryMarkdownContent),
+            storedDailyMarkdown,
             null, // No podcast script for this page
         );
         return new Response(successHtml, { headers: { 'Content-Type': 'text/html; charset=utf-8' } });

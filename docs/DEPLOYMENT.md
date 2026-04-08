@@ -1,242 +1,162 @@
 ## 项目部署与维护
 
-### 🏗️ 项目架构
+### 架构概览
 
-本项目依托 Cloudflare 强大的生态系统，实现了高效、轻量与良好的可扩展性。
+当前项目只包含一条运行主链路：
 
-> 各核心组件协同工作，构成了一个从数据输入、处理到输出的完整闭环。
+- Cloudflare Worker：处理登录、抓取、内容生成与页面渲染
+- Cloudflare KV：保存登录 session 与按日期分类的抓取结果
+- Cloudflare D1：保存生成后的日报正文与 RSS 摘要
+- Folo / Follow API：作为新闻、论文和社交内容来源
+- Gemini 或 OpenAI 兼容接口：生成日报、播客稿和分析内容
 
-*   **☁️ Cloudflare Workers**: 作为项目的**核心执行环境**，负责处理所有 HTTP 请求、调度任务、调用外部 API 以及执行 AI 内容生成逻辑。
-*   **🗄️ Cloudflare KV**: 作为项目的**持久化存储**，用于保存配置信息、缓存数据以及每日生成的报告内容，提供了低延迟的键值对存储能力。
-*   **🔌 外部 API 整合**:
-    *   **AI 模型 API**: 集成 Google Gemini 和 OpenAI 兼容 API，为内容摘要和再创作提供强大的 AI 支持。
-    *   **内容源 API**:
-        *   **Folo API**: 默认的信息聚合来源，可灵活配置抓取不同的 Folo 源。
-    *   **发布渠道 API**:
-        *   **GitHub API**: 用于将处理好的内容自动推送到指定的 GitHub 仓库。
-*   **🛠️ Wrangler**: Cloudflare官方的命令行工具，用于项目的本地开发、环境配置和一键部署。
+项目已不再包含 GitHub 提交链路，但当前版本会在生成日报后自动写入 D1，并由 Worker 直接输出 RSS。
 
-### 🚀 快速开始
+### 1. 准备环境
 
-#### 1. 准备工作
+- 安装 Node.js 20+
+- 安装 Wrangler
 
-首先，请确保您的开发环境中已安装 Node.js 和 npm。
-
-- **安装 Wrangler CLI**:
-  ```bash
-  npm install -g wrangler
-  或
-  npm install -g @cloudflare/wrangler
-  ```
-
-- **克隆项目代码**:
-  ```bash
-  git clone https://github.com/justlovemaki/CloudFlare-AI-Insight-Daily.git
-  cd CloudFlare-AI-Insight-Daily
-  ```
-
-#### 2. 配置环境变量
-
-项目的核心配置均在 `wrangler.toml` 文件中完成。请根据您的需求修改 `[vars]` 部分的配置。
-
-> **注意**：使用 `**` 标记的为 **必填项**。
-
-```toml
-# wrangler.toml
-
-# 项目名称
-name = "ai-insight-daily" 
-# Worker 入口文件
-main = "src/index.js" 
-# 兼容性日期
-compatibility_date = "2024-05-20"
-# 在开发模式下是否启用 Worker，设置为 true 可以在 workers.dev 子域上预览。
-workers_dev = true
-
-[vars]
-# ========================
-# 基础功能配置
-# ========================
-**LOGIN_USERNAME** = "your_login_username"
-**LOGIN_PASSWORD** = "your_login_password"
-DAILY_TITLE = "AI洞察日报"
-PODCAST_TITLE = "来生小酒馆"
-PODCAST_BEGIN = "嘿，亲爱的V，欢迎收听新一期的来生情报站，我是你们的老朋友，何夕2077"
-PODCAST_END = "今天的情报就到这里，注意隐蔽，赶紧撤离"
-
-# ========================
-# AI 模型配置
-# ========================
-# 可选值: "GEMINI" 或 "OPEN"
-**USE_MODEL_PLATFORM** = "GEMINI" 
-OPEN_TRANSLATE = "true"
-
-# Gemini 配置
-**GEMINI_API_KEY** = "your_gemini_api_key"
-GEMINI_API_URL = "https://generativelanguage.googleapis.com"
-DEFAULT_GEMINI_MODEL = "gemini-2.5-flash-preview-05-20"
-
-# OpenAI 兼容 API 配置 (如 DeepSeek)
-OPENAI_API_KEY = "your_openai_compatible_key"
-OPENAI_API_URL = "https://api.deepseek.com"
-DEFAULT_OPEN_MODEL = "deepseek-chat"
-
-# ========================
-# GitHub 发布配置
-# ========================
-**GITHUB_TOKEN** = "your_github_personal_access_token"
-**GITHUB_REPO_OWNER** = "your_github_username"
-**GITHUB_REPO_NAME** = "your_repo_name"
-**GITHUB_BRANCH** = "main"
-
-# ========================
-# 内容源配置 (按需配置)
-# ========================
-# Folo 源
-FOLO_COOKIE_KV_KEY = "folo_auth_cookie"
-FOLO_DATA_API = "https://api.follow.is/entries"
-FOLO_FILTER_DAYS = "1"
-
-# 内容源 ID 和抓取页数...
-NEWS_AGGREGATOR_LIST_ID = "......"
-NEWS_AGGREGATOR_FETCH_PAGES = "2"
-HGPAPERS_LIST_ID = "......"
-HGPAPERS_FETCH_PAGES = "2"
-TWITTER_LIST_ID = "......"
-TWITTER_FETCH_PAGES = "2"
-REDDIT_LIST_ID = "......"
-REDDIT_FETCH_PAGES = "2" 
+```bash
+npm install -g wrangler
 ```
 
-#### 3. 本地开发与调试
+- 克隆仓库
 
-- **配置 KV 命名空间**:
-  1.  在 Cloudflare 控制台 > `Workers 和 Pages` > `KV` 中创建一个新的 KV 命名空间。
-  2.  将创建的 KV ID 添加到 `wrangler.toml` 文件中：
-      ```toml
-      kv_namespaces = [
-        { 
-            binding = "DATA_KV",  # 代码中使用的绑定名称
-            id = "your_kv_namespace_id"  # 在 Cloudflare 控制台找到的 ID
-        }
-      ]
-      ```
+```bash
+git clone https://github.com/justlovemaki/CloudFlare-AI-Insight-Daily.git
+cd CloudFlare-AI-Insight-Daily
+```
 
-- **启动本地开发服务**:
-  ```bash
-  wrangler dev
-  ```
-  该命令会启动一个本地服务器（通常在 `http://localhost:8787`），您可以直接在浏览器中访问以进行调试。
+### 2. 创建并绑定 KV 与 D1
 
-- **默认开始路径**:
-  * 路径：/getContentHtml?date=YYYY-MM-DD (GET) 
+先创建一个专用 KV namespace：
 
-#### 4. 部署到 Cloudflare
+```bash
+npx wrangler kv namespace create DATA_KV
+```
 
-- **登录 Cloudflare**:
-  ```bash
-  wrangler login
-  ```
+把命令返回的 namespace id 填到 [wrangler.toml](/Volumes/c/Workspace/CloudFlare-AI-Insight-Daily/wrangler.toml) 里的 `[[kv_namespaces]]`。
 
-- **一键部署**:
-  ```bash
-  wrangler deploy
-  ```
-  部署成功后，Wrangler 会返回一个公开的 `*.workers.dev` 域名，您的 AI 洞察日报服务已在线上运行！
+再创建一个 D1 数据库：
 
-### 🗓️ 定时生成日报站点 (可选)
+```bash
+npx wrangler d1 create ai-daily
+```
 
-#### 方案一：🌐 使用 GitHub Actions 自动部署 (推荐)
+把命令返回的 `database_id` 填到 [wrangler.toml](/Volumes/c/Workspace/CloudFlare-AI-Insight-Daily/wrangler.toml) 里的 `[[d1_databases]]`，然后执行表结构初始化：
 
-此方案利用 GitHub 的免费资源，实现全自动、零成本的日报站点部署，是大多数用户的首选。
+```bash
+npx wrangler d1 execute ai-daily --local --file=schema.sql
+```
 
-> **📌 前置要求**：
-> *   您的目标 GitHub 仓库已开通 GitHub Actions 功能。
-> *   在仓库的 `Settings` -> `Pages` 中，选择 `GitHub Actions` 作为部署源 (Source)。
-> *   确保 `.github/workflows/` 目录下已包含 `build-daily-book.yml` 等工作流文件。
+如果要初始化线上库，再执行：
 
-##### 部署步骤
+```bash
+npx wrangler d1 execute ai-daily --remote --file=schema.sql
+```
 
-1.  **🔧 配置工作流文件**
-    *   打开 `.github/workflows/build-daily-book.yml` 文件，找到所有涉及到 `book` 分支的地方，将其修改为您计划用于存放日报站点的分支名称（例如 `gh-pages`）。
-    *   (可选) 修改文件顶部的定时任务时间，以自定义每日执行时间
+### 3. 配置非敏感变量
 
-2.  **🔧 调整mdbook配置文件**
-    *   打开 `book.toml`文件，
-    *   修改 `title` 为您的日报站点标题。
-    *   修改 `git-repository-url` 为您的 GitHub 仓库地址。
+项目默认使用 [wrangler.toml](/Volumes/c/Workspace/CloudFlare-AI-Insight-Daily/wrangler.toml) 中的 `[vars]`：
 
-3.  **💡 (可选) 配置图片代理**
-    如果遇到部署后图片无法显示的问题，可以配置一个图片代理来解决。
-    *   在您的 GitHub 仓库页面，进入 `Settings` -> `Secrets and variables` -> `Actions`。
-    *   在 `Variables` 标签页，点击 `New repository variable`。
-    *   创建一个名为 `IMAGE_PROXY_URL` 的变量，值为您的代理服务地址，例如 `https://your-proxy.com/`。
-    *   创建一个名为 `RSS_FEED_URL` 的变量，值为您的后端服务地址，例如 `https://your-backend.com/rss`。
+- `USE_MODEL_PLATFORM`
+- `GEMINI_API_URL` / `DEFAULT_GEMINI_MODEL`
+- `OPENAI_API_URL` / `DEFAULT_OPEN_MODEL`
+- `FOLO_*`
+- 各个 `*_LIST_ID`
+- 页面标题、播客标题、插入尾注等显示配置
 
-4.  **🚀 触发 Action 并验证**
-    *   手动触发一次 `build-daily-book` 工作流，或等待其定时自动执行。
-    *   任务成功后，稍等片刻，即可通过您的 GitHub Pages 地址访问。
-    *   访问地址格式通常为：`https://<你的用户名>.github.io/<你的仓库名>/today/book/`
+最常见的改法：
 
----
+- 使用 Gemini：保留 `USE_MODEL_PLATFORM = "GEMINI"`
+- 使用 OpenAI 兼容接口：改成 `USE_MODEL_PLATFORM = "OPEN"`，并填写 `OPENAI_API_URL` 与 `DEFAULT_OPEN_MODEL`
+- 不抓某一类内容：把对应 `*_LIST_ID` 留空即可
 
-#### 方案二：🐳 使用 Docker 进行本地或服务器部署
+### 4. 配置敏感变量
 
-此方案适合希望将日报站点部署在自己服务器或本地环境的用户，拥有更高的控制权。
+敏感信息不要写进 `wrangler.toml`，直接用 `wrangler secret put`：
 
-##### 部署步骤
+默认 Gemini 部署至少需要：
 
-1.  **📝 修改配置文件**
-    在 `cron-docker` 目录下，您需要根据自己的情况修改以下文件：
+```bash
+npx wrangler secret put GEMINI_API_KEY
+npx wrangler secret put LOGIN_USERNAME
+npx wrangler secret put LOGIN_PASSWORD
+```
 
-    *   **`Dockerfile`**:
-        *   修改 GITHUB相关变量 为您自己的 GitHub 仓库地址。
-        *   (可选) 修改 `ENV IMAGE_PROXY_URL` 为您的图片代理地址。
-        *   (可选) 修改第6步的 `cron` 表达式，以自定义每日执行时间 (默认为 UTC 时间)。
+如果你切到 OpenAI 兼容接口，还需要：
 
-    *   **`修改默认分支`**:
-        *   打开`scripts/build.sh`，修改第四步git clone -b book "$REPO_URL"，调整为你的分支
-        *   打开`scripts/work/github.sh`，修改BRANCH="book"，调整为你的分支
+```bash
+npx wrangler secret put OPENAI_API_KEY
+```
 
-    *   **`scripts/work/book.toml`**:
-        *   修改 `title` 为您的日报站点标题。
-        *   修改 `git-repository-url` 为您的 GitHub 仓库地址。
+### 5. 本地调试
 
-2.  **🛠️ 构建并运行 Docker 容器**
-    在您的终端中执行以下命令：
+```bash
+npx wrangler dev
+```
 
-    ```bash
-    # 进入 cron-docker 目录
-    cd cron-docker
+默认建议先访问：
 
-    # 构建 Docker 镜像，并命名为 ai-daily-cron-job
-    docker build -t ai-daily-cron-job .
+- `/login`
+- `/getContentHtml?date=YYYY-MM-DD`
+- `/rss`
 
-    # 在后台以守护进程模式 (-d) 启动容器
-    docker run -d --name ai-daily-cron -p 4399:4399 --restart always ai-daily-cron-job
-    ```
-    > **提示**：`-p 4399:80` 命令会将容器的 80 端口映射到主机的 4399 端口，您可以根据需要修改主机端口。
+说明：
 
-3.  **✅ 验证部署**
-    打开浏览器，访问 `http://127.0.0.1:4399`。如果能看到生成的日报站点，则表示本地部署成功。
+- `wrangler dev` 默认使用本地 KV，不会直接读线上 KV 数据
+- `wrangler dev` 配合 `wrangler d1 execute ... --local` 可以直接调试本地 D1
+- Folo Cookie 由浏览器 `localStorage` 保存，不需要写入 Worker 环境变量
 
-4.  **🌐 (可选) 配置公网访问**
-    如果您需要让外网也能访问到这个站点，可以将您的服务器端口暴露到公网。推荐使用 [Cloudflare Tunnels](https://www.cloudflare.com/products/tunnel/) 等工具，可以安全、便捷地实现内网穿透。
+### 6. 部署到 Cloudflare
 
-### ❓ F.A.Q
+```bash
+npx wrangler deploy
+```
 
-#### 如何获取 `feedId` 和 `listId`？
+如果你只想先确认打包没问题，可以先跑：
 
--   **Folo Feed ID**: 登录 Folo.so 后，在浏览器地址栏中找到 `feedId`。
-    ![获取 Folo Feed ID](images/folo-1.png)
+```bash
+npx wrangler deploy --dry-run
+```
 
--   **Twitter List ID**: 在 Twitter 上打开您想关注的列表，`listId` 就在地址栏中。
-    ![获取 Twitter List ID](images/folo-2.png)
+### 7. 上线后检查
 
-#### 🔑 如何获取 API 密钥？
+建议按这个顺序做 smoke test：
 
--   **Google Gemini API Key**:
-    访问 [Google AI for Developers](https://ai.google.dev/gemini-api/docs/api-key?hl=zh-cn) 创建您的 API 密钥。
+1. 打开 `/login`，确认能正常显示登录页
+2. 使用 `LOGIN_USERNAME` / `LOGIN_PASSWORD` 登录
+3. 打开 `/getContentHtml?date=YYYY-MM-DD`
+4. 触发一次 `/writeData`
+5. 选择内容生成 `/genAIContent`
+6. 打开 `/rss`，确认同一天的摘要已自动出现
+7. 再触发 `/genAIPodcastScript` 与 `/genAIDailyAnalysis`
 
--   **GitHub Personal Access Token**:
-    请参照 [GitHub 官方文档](https://docs.github.com/zh/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens) 生成一个具有 `repo` 权限的 Token。
+### 8. 当前必需变量清单
+
+运行时至少需要以下绑定或变量：
+
+- `DATA_KV`
+- `DB`
+- `OPEN_TRANSLATE`
+- `USE_MODEL_PLATFORM`
+- `LOGIN_USERNAME`
+- `LOGIN_PASSWORD`
+- `PODCAST_TITLE`
+- `PODCAST_BEGIN`
+- `PODCAST_END`
+- `FOLO_COOKIE_KV_KEY`
+- `FOLO_DATA_API`
+- `FOLO_FILTER_DAYS`
+
+按模型平台二选一：
+
+- Gemini：`GEMINI_API_KEY`、`GEMINI_API_URL`、`DEFAULT_GEMINI_MODEL`
+- OpenAI 兼容：`OPENAI_API_KEY`、`OPENAI_API_URL`、`DEFAULT_OPEN_MODEL`
+
+### 9. 当前发布语义
+
+- `/genAIContent` 生成成功后会自动 upsert 当天日报到 D1
+- 同一天重新生成会覆盖正文和 RSS 摘要，不会产生重复 feed 项
+- `/rss?days=7` 默认读取最近 7 天的 D1 记录

@@ -282,7 +282,7 @@ function generatePromptSectionHtmlForGenAI(systemPrompt, userPrompt, promptTitle
 
 export function generateGenAiPageHtml(env, title, bodyContent, pageDate, isErrorPage = false, selectedItemsForAction = null,
                                  systemP1 = null, userP1 = null, systemP2 = null, userP2 = null,
-                                 promptsMd = null, dailyMd = null, podcastMd = null, readGithub = null) {
+                                 promptsMd = null, dailyMd = null, podcastMd = null) {
 
 
     let actionButtonHtml = '';
@@ -307,34 +307,14 @@ export function generateGenAiPageHtml(env, title, bodyContent, pageDate, isError
         `;
     } 
 
-    let githubSaveFormHtml = '';
     let generatePodcastButtonHtml = ''; 
     let aiDailyAnalysisButtonHtml = '';
     let outDisplayButtonHtml = '';
-
-    // Since commitToGitHub and genAIPodcastScript are now API calls,
-    // these forms should be handled by JavaScript on the client side.
-    // We will provide the data as hidden inputs for potential client-side use,
-    // but the submission will be via JS fetch, not direct form POST.
-    if (!isErrorPage) {
-        if (title === 'AI日报' && promptsMd && dailyMd) {
-            githubSaveFormHtml = `
-                <input type="hidden" id="promptsMdCall1" value="${escapeHtml(promptsMd)}">
-                <input type="hidden" id="dailyMd" value="${escapeHtml(dailyMd)}">
-                <button type="button" class="button-link github-save-button" onclick="commitToGitHub('${pageDate}', 'daily')">保存日报到 GitHub</button>`;
-        } else if (title === 'AI播客脚本' && promptsMd && podcastMd) {
-            githubSaveFormHtml = `
-                <input type="hidden" id="promptsMdCall2" value="${escapeHtml(promptsMd)}">
-                <input type="hidden" id="podcastMd" value="${escapeHtml(podcastMd)}">
-                <button type="button" class="button-link github-save-button" onclick="commitToGitHub('${pageDate}', 'podcast')">保存播客到 GitHub</button>`;
-        }
-    }
 
     if (title === 'AI日报' && !isErrorPage && podcastMd === null) { // podcastMd === null indicates it's the Call 1 page
         generatePodcastButtonHtml = `
             <form action="/genAIPodcastScript" method="POST" style="display: inline-block; margin-left: 0.5rem;">
                 <input type="hidden" name="date" value="${escapeHtml(pageDate)}">
-                <input type="hidden" name="readGithub" value="${readGithub}">
                 ${selectedItemsForAction.map(item => `<input type="hidden" name="selectedItems" value="${escapeHtml(item)}">`).join('')}
                 <input type="hidden" name="summarizedContent" value="${escapeHtml(convertEnglishQuotesToChinese(bodyContent))}">
                 <button type="submit" class="button-link">生成播客脚本</button>
@@ -371,7 +351,7 @@ export function generateGenAiPageHtml(env, title, bodyContent, pageDate, isError
         <!DOCTYPE html><html lang="zh-Hans"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
             <title>${escapeHtml(title)}</title>
             <style>
-                :root { --primary-color: #007bff; --light-gray: #f8f9fa; --medium-gray: #e9ecef; --dark-gray: #343a40; --retry-color: #ffc107; --retry-text-color: #212529; --info-color: #17a2b8; --github-green: #28a745;}
+                :root { --primary-color: #007bff; --light-gray: #f8f9fa; --medium-gray: #e9ecef; --dark-gray: #343a40; --retry-color: #ffc107; --retry-text-color: #212529; --info-color: #17a2b8;}
                 body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; background-color: var(--light-gray); color: var(--dark-gray); padding: 1rem; }
                 .container { max-width: 900px; margin: 0 auto; background-color: #fff; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
                 h1 { font-size: 1.8rem; color: ${isErrorPage ? '#dc3545' : 'var(--dark-gray)'}; margin-bottom: 0.5rem; }
@@ -383,8 +363,6 @@ export function generateGenAiPageHtml(env, title, bodyContent, pageDate, isError
                 .button-link:hover { background-color: #0056b3; }
                 .regenerate-button { background-color: ${isErrorPage ? 'var(--retry-color)' : 'var(--info-color)'}; color: ${isErrorPage ? 'var(--retry-text-color)' : 'white'}; }
                 .regenerate-button:hover { background-color: ${isErrorPage ? '#e0a800' : '#138496'}; }
-                .github-save-button { background-color: var(--github-green); }
-                .github-save-button:hover { background-color: #218838; }
                 .toggle-prompt-btn { background-color: #6c757d; font-size: 0.85rem; padding: 0.4rem 0.8rem;}
                 .toggle-prompt-btn:hover { background-color: #5a6268; }
                 .copy-prompt-btn { background-color: #17a2b8; font-size: 0.85rem; padding: 0.4rem 0.8rem;}
@@ -407,7 +385,6 @@ export function generateGenAiPageHtml(env, title, bodyContent, pageDate, isError
             <div class="navigation-links">
                 <a href="/getContentHtml?date=${encodeURIComponent(pageDate)}" class="button-link">返回内容选择</a>
                 ${actionButtonHtml}
-                ${githubSaveFormHtml}
                 <div id="dailyAnalysisResult" style="margin-top: 1rem; padding: 1rem; border: 1px solid #ccc; border-radius: 5px; background-color: #f9f9f9; display: none;"></div>
             </div>
         </div>
@@ -435,55 +412,6 @@ export function generateGenAiPageHtml(env, title, bodyContent, pageDate, isError
                     buttonElement.textContent = '已复制!'; buttonElement.style.backgroundColor = '#28a745';
                     setTimeout(() => { buttonElement.textContent = originalText; buttonElement.style.backgroundColor = '#17a2b8'; }, 2000);
                 }, (err) => { console.error('Async: Could not copy text: ', err); alert('复制提示失败。'); });
-            }
-
-            async function commitToGitHub(date, type) {
-                const button = event.target;
-                const originalText = button.textContent;
-                button.textContent = '保存中...';
-                button.disabled = true;
-
-                const formData = new FormData();
-                formData.append('date', date);
-
-                if (type === 'daily') {
-                    formData.append('prompts_markdown-1', document.getElementById('promptsMdCall1').value);
-                    formData.append('daily_summary_markdown', document.getElementById('dailyMd').value);
-                } else if (type === 'podcast') {
-                    formData.append('prompts_markdown-2', document.getElementById('promptsMdCall2').value);
-                    formData.append('podcast_script_markdown', document.getElementById('podcastMd').value);
-                }
-
-                let githubSuccess = false;
-                let supabaseSuccess = false;
-
-                try {
-                    // Commit to GitHub
-                    const githubResponse = await fetch('/commitToGitHub', {
-                        method: 'POST',
-                        body: formData
-                    });
-
-                    const githubResult = await githubResponse.json();
-                    if (githubResponse.ok) {
-                        alert('GitHub 提交成功！');
-                        console.log('GitHub Commit Success:', githubResult);
-                        githubSuccess = true;
-                    } else {
-                        alert('GitHub 提交失败: ' + githubResult.message);
-                        console.error('GitHub Commit Failed:', githubResult);
-                    }
-                } catch (error) {
-                    console.error('Error committing to GitHub:', error);
-                    alert('GitHub 请求失败，请检查网络或服务器。');
-                }
-
-                if (githubSuccess || supabaseSuccess) {
-                    // Optionally reload or update UI if both or one succeeded
-                }
-
-                button.textContent = originalText;
-                button.disabled = false;
             }
 
             async function generateAIDailyAnalysis(date) {

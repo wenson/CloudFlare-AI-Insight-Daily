@@ -3,24 +3,40 @@ import { handleWriteData } from './handlers/writeData.js';
 import { handleGetContent } from './handlers/getContent.js';
 import { handleGetContentHtml } from './handlers/getContentHtml.js';
 import { handleGenAIContent, handleGenAIPodcastScript, handleGenAIDailyAnalysis } from './handlers/genAIContent.js';
-import { handleGenAIDailyPage } from './handlers/genAIDailyPage.js'; // Import handleGenAIDailyPage
-import { handleCommitToGitHub } from './handlers/commitToGitHub.js';
+import { handleGenAIDailyPage } from './handlers/genAIDailyPage.js';
 import { handleRss } from './handlers/getRss.js';
-import { handleWriteRssData, handleGenerateRssContent } from './handlers/writeRssData.js';
 import { dataSources } from './dataFetchers.js';
 import { handleLogin, isAuthenticated, handleLogout } from './auth.js';
+
+function getRequiredEnvVars(env) {
+    const requiredEnvVars = [
+        'DATA_KV',
+        'DB',
+        'OPEN_TRANSLATE',
+        'USE_MODEL_PLATFORM',
+        'LOGIN_USERNAME',
+        'LOGIN_PASSWORD',
+        'PODCAST_TITLE',
+        'PODCAST_BEGIN',
+        'PODCAST_END',
+        'FOLO_COOKIE_KV_KEY',
+        'FOLO_DATA_API',
+        'FOLO_FILTER_DAYS',
+    ];
+
+    if ((env.USE_MODEL_PLATFORM || '').startsWith('OPEN')) {
+        requiredEnvVars.push('OPENAI_API_KEY', 'OPENAI_API_URL', 'DEFAULT_OPEN_MODEL');
+    } else {
+        requiredEnvVars.push('GEMINI_API_KEY', 'GEMINI_API_URL', 'DEFAULT_GEMINI_MODEL');
+    }
+
+    return requiredEnvVars;
+}
 
 export default {
     async fetch(request, env) {
         // Check essential environment variables
-        const requiredEnvVars = [
-            'DATA_KV', 'GEMINI_API_KEY', 'GEMINI_API_URL', 'DEFAULT_GEMINI_MODEL', 'OPEN_TRANSLATE', 'USE_MODEL_PLATFORM',
-            'GITHUB_TOKEN', 'GITHUB_REPO_OWNER', 'GITHUB_REPO_NAME','GITHUB_BRANCH',
-            'LOGIN_USERNAME', 'LOGIN_PASSWORD',
-            'PODCAST_TITLE','PODCAST_BEGIN','PODCAST_END',
-            'FOLO_COOKIE_KV_KEY','FOLO_DATA_API','FOLO_FILTER_DAYS',
-        ];
-        console.log(env);
+        const requiredEnvVars = getRequiredEnvVars(env);
         const missingVars = requiredEnvVars.filter(varName => !env[varName]);
 
         if (missingVars.length > 0) {
@@ -46,10 +62,6 @@ export default {
             return await handleGetContent(request, env);
         } else if (path.startsWith('/rss') && request.method === 'GET') {
             return await handleRss(request, env);
-        } else if (path === '/writeRssData' && request.method === 'GET') {
-            return await handleWriteRssData(request, env);
-        } else if (path === '/generateRssContent' && request.method === 'GET') {
-            return await handleGenerateRssContent(request, env);
         }
 
         // Authentication check for all other paths
@@ -81,8 +93,6 @@ export default {
                 response = await handleGenAIDailyAnalysis(request, env);
             } else if (path === '/genAIDailyPage' && request.method === 'GET') { // New route for AI Daily Page
                 response = await handleGenAIDailyPage(request, env);
-            } else if (path === '/commitToGitHub' && request.method === 'POST') {
-                response = await handleCommitToGitHub(request, env);
             } else {
                 return new Response(null, { status: 404, headers: {'Content-Type': 'text/plain; charset=utf-8'} });
             }

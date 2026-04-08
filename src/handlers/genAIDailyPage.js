@@ -29,7 +29,6 @@ export async function handleGenAIDailyPage(request, env) {
             'webbuild', // promptsMarkdownContent (not applicable here)
             convertEnglishQuotesToChinese(dailySummaryMarkdownContent), // dailySummaryMarkdownContent
             null, // podcastScriptMarkdownContent (not applicable here)
-            true, // readGithub
         );
         return new Response(successHtml, { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
 
