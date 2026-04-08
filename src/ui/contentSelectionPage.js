@@ -2,10 +2,24 @@ import { escapeHtml, formatDateToChinese } from '../helpers.js';
 import { dataSources } from '../dataFetchers.js';
 import { renderDashboardPage } from './pageShell.js';
 
-function renderContentCard(item, index) {
-  const source = dataSources[item.type];
-  const html = source?.sources?.[0]?.generateHtml
-    ? source.sources[0].generateHtml(item)
+function buildTypeRenderers() {
+  return Object.entries(dataSources).reduce((renderers, [type, config]) => {
+    const sourceRenderer = Array.isArray(config?.sources)
+      ? config.sources.find((source) => typeof source?.generateHtml === 'function')?.generateHtml
+      : null;
+
+    if (typeof sourceRenderer === 'function') {
+      renderers[type] = sourceRenderer;
+    }
+
+    return renderers;
+  }, {});
+}
+
+function renderContentCard(item, index, typeRenderers) {
+  const renderer = typeRenderers[item.type];
+  const html = typeof renderer === 'function'
+    ? renderer(item)
     : `<strong>${escapeHtml(item.title || '未知内容')}</strong>`;
 
   return `
@@ -26,9 +40,9 @@ function renderContentCard(item, index) {
     </article>`;
 }
 
-function renderCategoryPanel(category, items, isActive) {
+function renderCategoryPanel(category, items, isActive, typeRenderers) {
   const cards = items.length
-    ? items.map((item, index) => renderContentCard(item, index)).join('')
+    ? items.map((item, index) => renderContentCard(item, index, typeRenderers)).join('')
     : '<div class="empty-panel card"><h3>当前分类暂无内容</h3><p>可以稍后重新抓取，或切换到其他分类继续筛选。</p></div>';
 
   return `
@@ -44,6 +58,7 @@ function renderCategoryPanel(category, items, isActive) {
 export function generateContentSelectionPageHtml(env, dateStr, allData, dataCategories) {
   const categories = Array.isArray(dataCategories) ? dataCategories : [];
   const safeData = allData || {};
+  const typeRenderers = buildTypeRenderers();
   const safeDateStr = escapeHtml(dateStr);
   const safeFilterDays = escapeHtml(env?.FOLO_FILTER_DAYS ?? '');
   const safeDisplayDate = escapeHtml(formatDateToChinese(dateStr));
@@ -66,7 +81,7 @@ export function generateContentSelectionPageHtml(env, dateStr, allData, dataCate
   }).join('');
 
   const panels = categories.map((category, index) => {
-    return renderCategoryPanel(category, safeData?.[category.id] || [], index === 0);
+    return renderCategoryPanel(category, safeData?.[category.id] || [], index === 0, typeRenderers);
   }).join('');
 
   const bodyContent = `

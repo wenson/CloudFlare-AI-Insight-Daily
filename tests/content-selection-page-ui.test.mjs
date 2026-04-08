@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { generateContentSelectionPageHtml } from '../src/ui/contentSelectionPage.js';
+import { dataSources } from '../src/dataFetchers.js';
 
 function createEnv() {
   return {
@@ -52,4 +53,38 @@ test('content selection page renders the dashboard shell and explicit summary re
   assert.ok(html.includes('class="category-pill chip is-active"'));
   assert.ok(html.includes('>生成 AI 日报</button>'));
   assert.doesNotMatch(html, /ondblclick=/);
+});
+
+test('content selection page resolves renderer by type instead of fixed first source index', () => {
+  const originalNewsSources = dataSources.news.sources;
+  dataSources.news.sources = [
+    {},
+    {
+      generateHtml: () => '<strong>Second source renderer</strong>',
+    },
+  ];
+
+  try {
+    const html = generateContentSelectionPageHtml(
+      createEnv(),
+      '2026-04-08',
+      {
+        news: [
+          {
+            id: 'news-2',
+            type: 'news',
+            title: 'Fallback title',
+          },
+        ],
+        paper: [],
+        socialMedia: [],
+      },
+      createCategories(),
+    );
+
+    assert.match(html, /Second source renderer/);
+    assert.doesNotMatch(html, /Fallback title/);
+  } finally {
+    dataSources.news.sources = originalNewsSources;
+  }
 });
