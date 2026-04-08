@@ -29,6 +29,33 @@ function isPodcastPage(title) {
   return String(title || '').includes('AI播客');
 }
 
+function escapeRawHtmlInMarkdown(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+function sanitizePreviewHtml(renderedHtml) {
+  return String(renderedHtml ?? '')
+    .replace(/\s+on[a-z]+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, '')
+    .replace(/\b(href|src)\s*=\s*(["'])(.*?)\2/gi, (fullMatch, attribute, quote, rawValue) => {
+      const normalized = String(rawValue)
+        .replace(/[\u0000-\u001F\u007F\s]+/g, '')
+        .toLowerCase();
+
+      if (
+        normalized.startsWith('javascript:')
+        || normalized.startsWith('vbscript:')
+        || normalized.startsWith('data:text/html')
+      ) {
+        return `${attribute}=${quote}#${quote}`;
+      }
+
+      return `${attribute}=${quote}${rawValue}${quote}`;
+    });
+}
+
 function renderHiddenFields(pageDate, selectedItems, extraFields = '') {
   return `
     <input type="hidden" name="date" value="${escapeMarkup(pageDate)}">
@@ -111,7 +138,7 @@ function renderActionRail({
     );
   }
 
-  if (title === 'AI日报' && !isErrorPage && podcastMd === null) {
+  if (isDailyReportPage(title) && !isErrorPage && podcastMd === null) {
     actions.push(
       renderActionForm(
         '/genAIPodcastScript',
@@ -184,7 +211,11 @@ export function generateGenAiPageHtml(
   const selectedItems = Array.isArray(selectedItemsForAction) ? selectedItemsForAction : [];
   const safeTitle = escapeMarkup(title || 'AI Report');
   const safeBodyContent = String(bodyContent ?? '');
-  const renderedMarkdown = marked.parse(replaceImageProxy(env?.IMG_PROXY || '', safeBodyContent));
+  const previewMarkdown = replaceImageProxy(
+    env?.IMG_PROXY || '',
+    escapeRawHtmlInMarkdown(safeBodyContent),
+  );
+  const renderedMarkdown = sanitizePreviewHtml(marked.parse(previewMarkdown));
   const formattedDate = escapeMarkup(formatDateToChinese(pageDate || '') || pageDate || '');
   const dailyPromptPanel = isDailyReportPage(title)
     ? renderPromptPanel(
@@ -273,6 +304,12 @@ export function generateGenAiPageHtml(
       const readerMarkdown = root.querySelector('.report-reader-markdown');
       const analysisOutput = root.querySelector('#dailyAnalysisResult');
 
+      function setAnalysisOutput(message) {
+        if (analysisOutput) {
+          analysisOutput.textContent = message;
+        }
+      }
+
       function showToast(message, tone = 'info') {
         if (!toastRegion) return;
 
@@ -320,7 +357,7 @@ export function generateGenAiPageHtml(
         const originalLabel = analysisButton.textContent;
         analysisButton.disabled = true;
         analysisButton.textContent = '分析中...';
-        analysisOutput.textContent = '正在请求新的分析结果...';
+        setAnalysisOutput('正在请求新的分析结果...');
 
         try {
           const response = await fetch('/genAIDailyAnalysis', {
@@ -331,15 +368,15 @@ export function generateGenAiPageHtml(
 
           const resultText = await response.text();
           if (!response.ok) {
-            analysisOutput.textContent = resultText || 'AI 日报分析失败。';
+            setAnalysisOutput(resultText || 'AI 日报分析失败。');
             showToast('AI 日报分析失败', 'error');
             return;
           }
 
-          analysisOutput.textContent = resultText || '分析已完成，但没有返回额外内容。';
+          setAnalysisOutput(resultText || '分析已完成，但没有返回额外内容。');
           showToast('AI 日报分析已更新');
         } catch (error) {
-          analysisOutput.textContent = '请求失败，请稍后重试。';
+          setAnalysisOutput('请求失败，请稍后重试。');
           showToast('请求失败，请稍后重试', 'error');
         } finally {
           analysisButton.disabled = false;

@@ -20,7 +20,7 @@ export async function handleGenAIDailyPage(request, env) {
         const successHtml = generateGenAiPageHtml(
             env, 
             'AI日报', // Title for the page
-            escapeHtml(dailySummaryMarkdownContent), 
+            dailySummaryMarkdownContent,
             dateStr, 
             false, // isError
             [], // selectedItemsParams (not applicable here)

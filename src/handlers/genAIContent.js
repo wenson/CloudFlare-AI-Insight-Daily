@@ -103,7 +103,7 @@ export async function handleGenAIPodcastScript(request, env) {
         const successHtml = generateGenAiPageHtml(
             env,
             'AI播客脚本',
-            escapeHtml(finalAiResponseOut),
+            finalAiResponseOut,
             dateStr, false, selectedItemsParams,
             null, null, // No Call 1 prompts for this page
             fullPromptForCallSystem, fullPromptForCall3_User,
@@ -313,7 +313,7 @@ export async function handleGenAIContent(request, env) {
         const successHtml = generateGenAiPageHtml(
             env,
             'AI日报', // Title for Call 1 page
-            escapeHtml(dailySummaryMarkdownContent),
+            dailySummaryMarkdownContent,
             dateStr, false, selectedItemsParams,
             fullPromptForCall2_System, fullPromptForCall2_User,
             null, null, // Pass Call 2 prompts
