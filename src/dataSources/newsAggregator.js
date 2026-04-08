@@ -75,7 +75,8 @@ const NewsAggregatorDataSource = {
                         id: entry.entries.id,
                         url: entry.entries.url,
                         title: entry.entries.title,
-                        content_html: entry.entries.content,
+                        content_html: entry.entries.content || "",
+                        description_html: entry.entries.description || "",
                         date_published: entry.entries.publishedAt,
                         authors: [{ name: entry.entries.author }],
                         source: entry.entries.author ? `${entry.feeds.title} - ${entry.entries.author}` : entry.feeds.title,
@@ -108,19 +109,23 @@ const NewsAggregatorDataSource = {
             return [];
         }
 
-        return rawData.items.map(item => ({
-            id: item.id,
-            type: sourceType,
-            url: item.url,
-            title: item.title,
-            description: stripHtml(item.content_html || ""),
-            published_date: item.date_published,
-            authors: item.authors ? item.authors.map(author => author.name).join(', ') : 'Unknown',
-            source: item.source || 'Aggregated News',
-            details: {
-                content_html: item.content_html || ""
-            }
-        }));
+        return rawData.items.map(item => {
+            const contentHtml = item.content_html || item.description_html || "";
+
+            return {
+                id: item.id,
+                type: sourceType,
+                url: item.url,
+                title: item.title,
+                description: stripHtml(contentHtml),
+                published_date: item.date_published,
+                authors: item.authors ? item.authors.map(author => author.name).join(', ') : 'Unknown',
+                source: item.source || 'Aggregated News',
+                details: {
+                    content_html: contentHtml
+                }
+            };
+        });
     },
 
     generateHtml: (item) => {
