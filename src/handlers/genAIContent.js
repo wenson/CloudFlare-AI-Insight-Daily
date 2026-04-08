@@ -2,7 +2,7 @@
 import { getISODate, escapeHtml, stripHtml, removeMarkdownCodeBlock, formatDateToChinese, convertEnglishQuotesToChinese, formatMarkdownText } from '../helpers.js';
 import { getFromKV } from '../kv.js';
 import { callChatAPI, callChatAPIStream } from '../chatapi.js';
-import { generateGenAiPageHtml } from '../htmlGenerators.js';
+import { generateGenAiPageHtml } from '../ui/genAiPage.js';
 import { dataSources } from '../dataFetchers.js'; // Import dataSources
 import { getSystemPromptSummarizationStepOne } from "../prompt/summarizationPromptStepZero";
 import { getSystemPromptSummarizationStepTwo } from "../prompt/summarizationPromptStepTwo";

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { generateGenAiPageHtml } from '../src/htmlGenerators.js';
+import { generateGenAiPageHtml } from '../src/ui/genAiPage.js';
 
 function createEnv() {
   return {
@@ -30,5 +30,8 @@ test('gen ai page renders reader and action rail layout', () => {
   assert.match(html, /report-actions/);
   assert.match(html, /analysis-panel/);
   assert.match(html, /prompt-panel/);
-  assert.match(html, /生成播客脚本/);
+  assert.match(html, /data-open-preview/);
+  assert.match(html, /data-run-analysis/);
+  assert.match(html, /app-toast-region/);
+  assert.doesNotMatch(html, /alert\(/);
 });

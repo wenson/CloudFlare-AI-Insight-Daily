@@ -1,5 +1,5 @@
 import { getISODate, escapeHtml, formatDateToChinese, convertEnglishQuotesToChinese} from '../helpers.js';
-import { generateGenAiPageHtml } from '../htmlGenerators.js';
+import { generateGenAiPageHtml } from '../ui/genAiPage.js';
 import { insertFoot } from '../foot.js';
 import { insertAd } from '../ad.js';
 
