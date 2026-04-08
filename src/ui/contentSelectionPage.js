@@ -44,6 +44,9 @@ function renderCategoryPanel(category, items, isActive) {
 export function generateContentSelectionPageHtml(env, dateStr, allData, dataCategories) {
   const categories = Array.isArray(dataCategories) ? dataCategories : [];
   const safeData = allData || {};
+  const safeDateStr = escapeHtml(dateStr);
+  const safeFilterDays = escapeHtml(env?.FOLO_FILTER_DAYS ?? '');
+  const safeDisplayDate = escapeHtml(formatDateToChinese(dateStr));
   const totalItems = categories.reduce((count, category) => {
     return count + (safeData?.[category.id] || []).length;
   }, 0);
@@ -69,14 +72,14 @@ export function generateContentSelectionPageHtml(env, dateStr, allData, dataCate
   const bodyContent = `
     <main class="workspace-shell">
       <form class="workspace-form" action="/genAIContent" method="POST">
-        <input type="hidden" name="date" value="${escapeHtml(dateStr)}">
+        <input type="hidden" name="date" value="${safeDateStr}">
 
         <header class="workspace-header card">
           <div class="workspace-header-copy">
             <p class="workspace-kicker">AI Insight Daily</p>
-            <h1>${formatDateToChinese(escapeHtml(dateStr))} 内容工作台</h1>
+            <h1>${safeDisplayDate} 内容工作台</h1>
             <div class="workspace-meta">
-              <span class="chip status-chip">时间窗口 ${escapeHtml(env?.FOLO_FILTER_DAYS || '')} 天</span>
+              <span class="chip status-chip">时间窗口 ${safeFilterDays} 天</span>
               <span class="chip status-chip">共 ${totalItems} 条候选内容</span>
               <span class="chip status-chip" data-selected-count>已选 0 条</span>
             </div>
@@ -138,7 +141,7 @@ export function generateContentSelectionPageHtml(env, dateStr, allData, dataCate
     </main>`;
 
   return renderDashboardPage({
-    title: `${formatDateToChinese(escapeHtml(dateStr))} ${env?.FOLO_FILTER_DAYS || ''}天内的数据`,
+    title: `${safeDisplayDate} ${safeFilterDays}天内的数据`,
     bodyClass: 'page-content-selection',
     bodyContent,
     inlineScript: '',

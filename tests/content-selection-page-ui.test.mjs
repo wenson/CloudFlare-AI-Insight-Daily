@@ -45,11 +45,11 @@ test('content selection page renders the dashboard shell and explicit summary re
     createCategories(),
   );
 
-  assert.match(html, /workspace-shell/);
-  assert.match(html, /workspace-header/);
-  assert.match(html, /selection-sidebar/);
-  assert.match(html, /selection-summary-mobile/);
-  assert.match(html, /category-pill/);
-  assert.match(html, /生成 AI 日报/);
+  assert.ok(html.includes('<main class="workspace-shell">'));
+  assert.ok(html.includes('<header class="workspace-header card">'));
+  assert.ok(html.includes('<aside class="selection-sidebar card" aria-label="已选内容摘要">'));
+  assert.ok(html.includes('<button type="button" class="selection-summary-mobile button button-primary" data-mobile-summary>'));
+  assert.ok(html.includes('class="category-pill chip is-active"'));
+  assert.ok(html.includes('>生成 AI 日报</button>'));
   assert.doesNotMatch(html, /ondblclick=/);
 });
