@@ -1,20 +1,29 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { generateGenAiPageHtml } from '../src/htmlGenerators.js';
 
-function generateGenAiPageHtml() {
-  return `
-    <div class="legacy-ai-shell">
-      <div class="legacy-reader">旧阅读区</div>
-      <div class="legacy-actions">旧操作区</div>
-      <div class="legacy-analysis">旧分析区</div>
-      <div class="legacy-prompt">旧提示面板</div>
-      <button type="button">生成播客脚本</button>
-    </div>
-  `;
+function createEnv() {
+  return {
+    IMG_PROXY: '',
+  };
 }
 
 test('gen ai page renders reader and action rail layout', () => {
-  const html = generateGenAiPageHtml();
+  const html = generateGenAiPageHtml(
+    createEnv(),
+    'AI日报',
+    '## 今日摘要\n\n这里是正文。',
+    '2026-04-08',
+    false,
+    ['news:1'],
+    'system prompt',
+    'user prompt',
+    null,
+    null,
+    null,
+    '## 今日摘要\n\n这里是正文。',
+    null,
+  );
 
   assert.match(html, /report-layout/);
   assert.match(html, /report-reader/);
