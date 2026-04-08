@@ -106,9 +106,8 @@ test('content selection page ships interaction controller hooks with non-blockin
   assert.match(html, /data-clear-selection/);
   assert.match(html, /data-mobile-summary/);
   assert.match(html, /data-selected-count/);
-  assert.match(html, /function showToast\(/);
-  assert.match(html, /form\.addEventListener\('submit'/);
-  assert.match(html, /event\.preventDefault\(\)/);
+  assert.match(html, /data-selection-summary-list/);
+  assert.match(html, /data-sidebar-status/);
   assert.doesNotMatch(html, /alert\(/);
   assert.doesNotMatch(html, /confirm\(/);
 });

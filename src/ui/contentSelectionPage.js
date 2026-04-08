@@ -207,17 +207,27 @@ export function generateContentSelectionPageHtml(env, dateStr, allData, dataCate
           mobileSummaryButton.textContent = '已选 ' + selectedCount + ' 条';
         }
 
+        summaryList.replaceChildren();
+
         if (selectedCount === 0) {
           sidebarStatus.textContent = '还没有选择内容';
-          summaryList.innerHTML = '<p class="selection-empty">从左侧内容池选择条目后，这里会实时显示结果。</p>';
+          const emptyNode = root.createElement('p');
+          emptyNode.className = 'selection-empty';
+          emptyNode.textContent = '从左侧内容池选择条目后，这里会实时显示结果。';
+          summaryList.appendChild(emptyNode);
           return;
         }
 
         sidebarStatus.textContent = '已准备生成，可直接提交';
-        summaryList.innerHTML = selectedCards.slice(0, 6).map((card) => {
-          const title = card.querySelector('strong')?.textContent?.trim() || card.dataset.itemValue || '未命名内容';
-          return '<div class="selection-row">' + title + '</div>';
-        }).join('');
+        selectedCards.slice(0, 6).forEach((card) => {
+          const row = root.createElement('div');
+          row.className = 'selection-row';
+          const titleText = card.querySelector('strong')?.textContent?.trim()
+            || card.querySelector('.content-card-html')?.textContent?.trim()
+            || '未命名内容';
+          row.textContent = titleText;
+          summaryList.appendChild(row);
+        });
       }
 
       function syncCardState(card) {
@@ -252,7 +262,7 @@ export function generateContentSelectionPageHtml(env, dateStr, allData, dataCate
         });
       }
 
-      async function saveCookie() {
+      function saveCookie() {
         if (!cookieInput || !cookiePanel) return;
 
         const value = cookieInput.value.trim();
@@ -298,7 +308,7 @@ export function generateContentSelectionPageHtml(env, dateStr, allData, dataCate
         }
       }
 
-      form.addEventListener('submit', (event) => {
+      form?.addEventListener('submit', (event) => {
         if (getSelectedCards().length === 0) {
           event.preventDefault();
           showToast('请至少选择一条内容后再生成', 'error');
