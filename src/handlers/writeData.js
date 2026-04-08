@@ -23,6 +23,7 @@ export async function handleWriteData(request, env) {
         let dataToStore = {};
         let fetchPromises = [];
         let successMessage = '';
+        let errors = [];
 
         if (category) {
             if (!Object.hasOwn(dataSources, category)) {
@@ -35,14 +36,39 @@ export async function handleWriteData(request, env) {
                 });
             }
             // 只抓取指定分类的数据
-            const fetchedData = await fetchDataByCategory(env, category, foloCookie); // 传递 foloCookie
+            const { data: fetchedData, errors: categoryErrors } = await fetchDataByCategory(env, category, foloCookie);
             dataToStore[category] = fetchedData;
+            errors = categoryErrors;
+            if (errors.length > 0) {
+                return new Response(JSON.stringify({
+                    success: false,
+                    message: `Failed to fetch data for category '${category}'.`,
+                    errors,
+                    [`${category}ItemCount`]: fetchedData.length,
+                }), {
+                    status: 502,
+                    headers: { 'Content-Type': 'application/json' }
+                });
+            }
             fetchPromises.push(storeInKV(env.DATA_KV, `${dateStr}-${category}`, fetchedData));
             successMessage = `Data for category '${category}' fetched and stored.`;
             console.log(`Transformed ${category}: ${fetchedData.length} items.`);
         } else {
             // 抓取所有分类的数据 (现有逻辑)
-            const allUnifiedData = await fetchAllData(env, foloCookie); // 传递 foloCookie
+            const { data: allUnifiedData, errors: fetchErrors } = await fetchAllData(env, foloCookie);
+            errors = fetchErrors;
+
+            if (errors.length > 0) {
+                return new Response(JSON.stringify({
+                    success: false,
+                    message: 'Failed to fetch one or more data sources.',
+                    errors,
+                    ...Object.fromEntries(Object.entries(allUnifiedData).map(([key, value]) => [`${key}ItemCount`, value.length]))
+                }), {
+                    status: 502,
+                    headers: { 'Content-Type': 'application/json' }
+                });
+            }
             
             for (const sourceType in dataSources) {
                 if (Object.hasOwnProperty.call(dataSources, sourceType)) {
@@ -55,8 +81,6 @@ export async function handleWriteData(request, env) {
         }
 
         await Promise.all(fetchPromises);
-
-        const errors = []; // Placeholder for potential future error aggregation from fetchAllData or fetchDataByCategory
 
         if (errors.length > 0) {
             console.warn("/writeData completed with errors:", errors);

@@ -1,4 +1,4 @@
-import { getRandomUserAgent, sleep, isDateWithinLastDays, stripHtml, formatDateToChineseWithTime, escapeHtml } from '../helpers';
+import { getRandomUserAgent, sleep, isDateWithinLastDays, stripHtml, formatDateToChineseWithTime, escapeHtml, buildCurlCommand } from '../helpers';
 
 const NewsAggregatorDataSource = {
     type: 'news-aggregator',
@@ -38,7 +38,7 @@ const NewsAggregatorDataSource = {
                 'sec-fetch-mode': 'cors',
                 'sec-fetch-site': 'same-site',
                 'x-app-name': 'Folo Web',
-                'x-app-version': '0.4.9',
+                'x-app-version': '1.50',
             };
 
             if (foloCookie) {
@@ -48,7 +48,7 @@ const NewsAggregatorDataSource = {
             const body = {
                 listId: listId,
                 view: 1,
-                withContent: true,
+                withContent: false,
             };
 
             if (publishedAfter) {
@@ -57,6 +57,7 @@ const NewsAggregatorDataSource = {
 
             try {
                 console.log(`Fetching News Aggregator data, page ${i + 1}...`);
+                console.log(`Debug curl for News Aggregator page ${i + 1}:\n${buildCurlCommand(env.FOLO_DATA_API, headers, body)}`);
                 const response = await fetch(env.FOLO_DATA_API, {
                     method: 'POST',
                     headers: headers,
@@ -65,7 +66,7 @@ const NewsAggregatorDataSource = {
 
                 if (!response.ok) {
                     console.error(`Failed to fetch News Aggregator data, page ${i + 1}: ${response.statusText}`);
-                    break;
+                    throw new Error(`News Aggregator request failed: ${response.status} ${response.statusText}`);
                 }
                 const data = await response.json();
                 if (data && data.data && data.data.length > 0) {
@@ -86,7 +87,7 @@ const NewsAggregatorDataSource = {
                 }
             } catch (error) {
                 console.error(`Error fetching News Aggregator data, page ${i + 1}:`, error);
-                break;
+                throw error;
             }
 
             await sleep(Math.random() * 5000);

@@ -1,4 +1,4 @@
-import { getRandomUserAgent, sleep, isDateWithinLastDays, stripHtml, formatDateToChineseWithTime, escapeHtml} from '../helpers';
+import { getRandomUserAgent, sleep, isDateWithinLastDays, stripHtml, formatDateToChineseWithTime, escapeHtml, buildCurlCommand} from '../helpers';
 
 const TwitterDataSource = {
     async fetch(env, foloCookie) {
@@ -37,7 +37,7 @@ const TwitterDataSource = {
                 'sec-fetch-mode': 'cors',
                 'sec-fetch-site': 'same-site',
                 'x-app-name': 'Folo Web',
-                'x-app-version': '0.4.9',
+                'x-app-version': '1.50',
             };
 
             // 直接使用传入的 foloCookie
@@ -48,7 +48,7 @@ const TwitterDataSource = {
             const body = {
                 listId: listId,
                 view: 1,
-                withContent: true,
+                withContent: false,
             };
 
             if (publishedAfter) {
@@ -57,6 +57,7 @@ const TwitterDataSource = {
 
             try {
                 console.log(`Fetching Twitter data, page ${i + 1}...`);
+                console.log(`Debug curl for Twitter page ${i + 1}:\n${buildCurlCommand(env.FOLO_DATA_API, headers, body)}`);
                 const response = await fetch(env.FOLO_DATA_API, {
                     method: 'POST',
                     headers: headers,
@@ -65,7 +66,7 @@ const TwitterDataSource = {
 
                 if (!response.ok) {
                     console.error(`Failed to fetch Twitter data, page ${i + 1}: ${response.statusText}`);
-                    break;
+                    throw new Error(`Twitter request failed: ${response.status} ${response.statusText}`);
                 }
                 const data = await response.json();
                 if (data && data.data && data.data.length > 0) {
@@ -86,7 +87,7 @@ const TwitterDataSource = {
                 }
             } catch (error) {
                 console.error(`Error fetching Twitter data, page ${i + 1}:`, error);
-                break;
+                throw error;
             }
 
             // Random wait time between 0 and 5 seconds to avoid rate limiting

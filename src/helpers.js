@@ -127,6 +127,9 @@ export function stripHtml(html) {
 export function convertToShanghaiTime(dateString) {
     // Create a Date object from the ISO string.
     const date = new Date(dateString);
+    if (Number.isNaN(date.getTime())) {
+        return null;
+    }
 
     // Get the date components in Asia/Shanghai timezone
     const options = {
@@ -143,7 +146,8 @@ export function convertToShanghaiTime(dateString) {
     // Format the date to a string in Shanghai timezone, then parse it back to a Date object.
     // This is a common workaround to get a Date object representing a specific timezone.
     const shanghaiDateString = new Intl.DateTimeFormat('en-US', options).format(date);
-    return new Date(shanghaiDateString);
+    const shanghaiDate = new Date(shanghaiDateString);
+    return Number.isNaN(shanghaiDate.getTime()) ? null : shanghaiDate;
 }
 
 export function getShanghaiTime() {
@@ -177,6 +181,9 @@ export function getShanghaiTime() {
 export function isDateWithinLastDays(dateString, days) {
     // Convert both dates to Shanghai time for consistent comparison
     const itemDate = convertToShanghaiTime(dateString);
+    if (!itemDate) {
+        return false;
+    }
     const today = new Date(fetchDate);
 
     // Normalize today to the start of its day in Shanghai time
@@ -287,6 +294,23 @@ export function convertEnglishQuotesToChinese(text) {
 export function formatMarkdownText(text) {
     const str = String(text);
     return str.replace(/“/g, '"');
+}
+
+function shellEscapeSingleQuoted(value) {
+    return String(value).replace(/'/g, `'\\''`);
+}
+
+export function buildCurlCommand(url, headers, body) {
+    const headerFlags = Object.entries(headers)
+        .map(([key, value]) => `-H '${shellEscapeSingleQuoted(`${key}: ${value}`)}'`)
+        .join(' \\\n  ');
+
+    return [
+        `curl '${shellEscapeSingleQuoted(url)}' \\`,
+        `  -X POST \\`,
+        headerFlags ? `  ${headerFlags} \\` : '',
+        `  --data-raw '${shellEscapeSingleQuoted(JSON.stringify(body))}'`,
+    ].filter(Boolean).join('\n');
 }
 
 /**

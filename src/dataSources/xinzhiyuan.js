@@ -37,7 +37,7 @@ const XinZhiYuanDataSource = {
                 'sec-fetch-mode': 'cors',
                 'sec-fetch-site': 'same-site',
                 'x-app-name': 'Folo Web',
-                'x-app-version': '0.4.9',
+                'x-app-version': '1.50',
             };
 
             // 直接使用传入的 foloCookie
@@ -48,7 +48,7 @@ const XinZhiYuanDataSource = {
             const body = {
                 feedId: feedId,
                 view: 1,
-                withContent: true,
+                withContent: false,
             };
 
             if (publishedAfter) {

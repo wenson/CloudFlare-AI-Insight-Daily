@@ -1,4 +1,4 @@
-import { getRandomUserAgent, sleep, isDateWithinLastDays, stripHtml, formatDateToChineseWithTime, escapeHtml} from '../helpers';
+import { getRandomUserAgent, sleep, isDateWithinLastDays, stripHtml, formatDateToChineseWithTime, escapeHtml, buildCurlCommand} from '../helpers';
 
 const RedditDataSource = {
     async fetch(env, foloCookie) {
@@ -37,7 +37,7 @@ const RedditDataSource = {
                 'sec-fetch-mode': 'cors',
                 'sec-fetch-site': 'same-site',
                 'x-app-name': 'Folo Web',
-                'x-app-version': '0.4.9',
+                'x-app-version': '1.50',
             };
 
             if (foloCookie) {
@@ -47,7 +47,7 @@ const RedditDataSource = {
             const body = {
                 listId: listId,
                 view: 1,
-                withContent: true,
+                withContent: false,
             };
 
             if (publishedAfter) {
@@ -56,6 +56,7 @@ const RedditDataSource = {
 
             try {
                 console.log(`Fetching Reddit data, page ${i + 1}...`);
+                console.log(`Debug curl for Reddit page ${i + 1}:\n${buildCurlCommand(env.FOLO_DATA_API, headers, body)}`);
                 const response = await fetch(env.FOLO_DATA_API, {
                     method: 'POST',
                     headers: headers,
@@ -64,7 +65,7 @@ const RedditDataSource = {
 
                 if (!response.ok) {
                     console.error(`Failed to fetch Reddit data, page ${i + 1}: ${response.statusText}`);
-                    break;
+                    throw new Error(`Reddit request failed: ${response.status} ${response.statusText}`);
                 }
                 const data = await response.json();
                 if (data && data.data && data.data.length > 0) {
@@ -85,7 +86,7 @@ const RedditDataSource = {
                 }
             } catch (error) {
                 console.error(`Error fetching Reddit data, page ${i + 1}:`, error);
-                break;
+                throw error;
             }
 
             await sleep(Math.random() * 5000);
