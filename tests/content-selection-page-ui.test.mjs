@@ -111,3 +111,19 @@ test('content selection page ships interaction controller hooks with non-blockin
   assert.doesNotMatch(html, /alert\(/);
   assert.doesNotMatch(html, /confirm\(/);
 });
+
+test('content selection page keeps summary sidebar usable on mobile and CTA scrolls to it', () => {
+  const html = generateContentSelectionPageHtml(
+    createEnv(),
+    '2026-04-08',
+    createData(),
+    createCategories(),
+  );
+
+  assert.match(
+    html,
+    /@media \(max-width: 768px\)[\s\S]*?\.selection-sidebar \{ display: grid; \}/,
+  );
+  assert.match(html, /const selectionSidebar = root\.querySelector\('\.selection-sidebar'\);/);
+  assert.match(html, /selectionSidebar\?\.scrollIntoView\(\{ behavior: 'smooth', block: 'start' \}\);/);
+});

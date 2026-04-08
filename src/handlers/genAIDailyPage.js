@@ -26,7 +26,7 @@ export async function handleGenAIDailyPage(request, env) {
             [], // selectedItemsParams (not applicable here)
             null, null, // Call 1 prompts (not applicable here)
             null, null, // Call 2 prompts (not applicable here)
-            'webbuild', // promptsMarkdownContent (not applicable here)
+            null, // promptsMarkdownContent (not applicable here)
             convertEnglishQuotesToChinese(dailySummaryMarkdownContent), // dailySummaryMarkdownContent
             null, // podcastScriptMarkdownContent (not applicable here)
         );

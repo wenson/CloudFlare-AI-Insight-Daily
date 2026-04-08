@@ -162,6 +162,7 @@ export function generateContentSelectionPageHtml(env, dateStr, allData, dataCate
       const toastRegion = root.querySelector('.app-toast-region');
       const summaryList = root.querySelector('[data-selection-summary-list]');
       const sidebarStatus = root.querySelector('[data-sidebar-status]');
+      const selectionSidebar = root.querySelector('.selection-sidebar');
       const selectedCountNodes = root.querySelectorAll('[data-selected-count]');
       const mobileSummaryButton = root.querySelector('[data-mobile-summary]');
       const cookiePanel = root.querySelector('[data-cookie-panel]');
@@ -354,7 +355,7 @@ export function generateContentSelectionPageHtml(env, dateStr, allData, dataCate
         showToast('已清空选择');
       });
       mobileSummaryButton?.addEventListener('click', () => {
-        summaryList?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        selectionSidebar?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       });
 
       const savedCookie = localStorage.getItem(cookieStorageKey);

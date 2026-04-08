@@ -256,7 +256,7 @@ export function getDashboardStyles() {
       .workspace-header, .report-header, .workspace-toolbar { padding: 16px; }
       .workspace-header, .report-header, .workspace-toolbar { flex-direction: column; }
       .workspace-grid, .report-grid { grid-template-columns: 1fr; }
-      .selection-sidebar { display: none; }
+      .selection-sidebar { display: grid; }
       .selection-summary-mobile { display: block; }
     }
   `;
