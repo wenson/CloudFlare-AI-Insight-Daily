@@ -1,7 +1,7 @@
 // src/handlers/getContentHtml.js
 import { getISODate, escapeHtml, setFetchDate } from '../helpers.js';
 import { getFromKV } from '../kv.js';
-import { generateContentSelectionPageHtml } from '../htmlGenerators.js';
+import { generateContentSelectionPageHtml } from '../ui/contentSelectionPage.js';
 
 export async function handleGetContentHtml(request, env, dataCategories) {
     const url = new URL(request.url);

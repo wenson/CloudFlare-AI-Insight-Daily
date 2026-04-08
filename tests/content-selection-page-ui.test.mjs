@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { generateContentSelectionPageHtml } from '../src/htmlGenerators.js';
+import { generateContentSelectionPageHtml } from '../src/ui/contentSelectionPage.js';
 
 function createEnv() {
   return {
