@@ -88,3 +88,27 @@ test('content selection page resolves renderer by type instead of fixed first so
     dataSources.news.sources = originalNewsSources;
   }
 });
+
+test('content selection page ships interaction controller hooks with non-blocking feedback', () => {
+  const html = generateContentSelectionPageHtml(
+    createEnv(),
+    '2026-04-08',
+    createData(),
+    createCategories(),
+  );
+
+  assert.match(html, /app-toast-region/);
+  assert.match(html, /data-open-cookie-panel/);
+  assert.match(html, /data-close-cookie-panel/);
+  assert.match(html, /data-save-cookie/);
+  assert.match(html, /data-fetch-all/);
+  assert.match(html, /data-filter-selected/);
+  assert.match(html, /data-clear-selection/);
+  assert.match(html, /data-mobile-summary/);
+  assert.match(html, /data-selected-count/);
+  assert.match(html, /function showToast\(/);
+  assert.match(html, /form\.addEventListener\('submit'/);
+  assert.match(html, /event\.preventDefault\(\)/);
+  assert.doesNotMatch(html, /alert\(/);
+  assert.doesNotMatch(html, /confirm\(/);
+});

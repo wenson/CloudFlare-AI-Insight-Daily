@@ -59,6 +59,7 @@ export function generateContentSelectionPageHtml(env, dateStr, allData, dataCate
   const categories = Array.isArray(dataCategories) ? dataCategories : [];
   const safeData = allData || {};
   const typeRenderers = buildTypeRenderers();
+  const firstCategory = categories[0]?.id ?? '';
   const safeDateStr = escapeHtml(dateStr);
   const safeFilterDays = escapeHtml(env?.FOLO_FILTER_DAYS ?? '');
   const safeDisplayDate = escapeHtml(formatDateToChinese(dateStr));
@@ -155,10 +156,214 @@ export function generateContentSelectionPageHtml(env, dateStr, allData, dataCate
       </form>
     </main>`;
 
+  const inlineScript = `
+    (() => {
+      const root = document;
+      const toastRegion = root.querySelector('.app-toast-region');
+      const summaryList = root.querySelector('[data-selection-summary-list]');
+      const sidebarStatus = root.querySelector('[data-sidebar-status]');
+      const selectedCountNodes = root.querySelectorAll('[data-selected-count]');
+      const mobileSummaryButton = root.querySelector('[data-mobile-summary]');
+      const cookiePanel = root.querySelector('[data-cookie-panel]');
+      const cookieInput = root.querySelector('#foloCookie');
+      const selectedFilter = root.querySelector('[data-filter-selected]');
+      const triggers = Array.from(root.querySelectorAll('[data-category-trigger]'));
+      const panels = Array.from(root.querySelectorAll('[data-category-panel]'));
+      const cards = Array.from(root.querySelectorAll('[data-item-card]'));
+      const checkboxes = Array.from(root.querySelectorAll('.content-checkbox'));
+      const form = root.querySelector('.workspace-form');
+      const cookieStorageKey = ${JSON.stringify(env?.FOLO_COOKIE_KV_KEY || 'folo_cookie')};
+
+      function showToast(message, tone = 'info') {
+        if (!toastRegion) return;
+
+        const toast = root.createElement('div');
+        toast.className = 'chip';
+        toast.style.pointerEvents = 'auto';
+        toast.style.background = tone === 'error' ? '#fee2e2' : '#dbeafe';
+        toast.style.color = tone === 'error' ? '#991b1b' : '#1d4ed8';
+        toast.textContent = message;
+        toastRegion.appendChild(toast);
+        window.setTimeout(() => toast.remove(), 2400);
+      }
+
+      function getSelectedCards() {
+        return cards.filter((card) => {
+          const checkbox = card.querySelector('.content-checkbox');
+          return Boolean(checkbox?.checked);
+        });
+      }
+
+      function updateSummary() {
+        if (!summaryList || !sidebarStatus) return;
+
+        const selectedCards = getSelectedCards();
+        const selectedCount = selectedCards.length;
+        selectedCountNodes.forEach((node) => {
+          node.textContent = '已选 ' + selectedCount + ' 条';
+        });
+
+        if (mobileSummaryButton) {
+          mobileSummaryButton.textContent = '已选 ' + selectedCount + ' 条';
+        }
+
+        if (selectedCount === 0) {
+          sidebarStatus.textContent = '还没有选择内容';
+          summaryList.innerHTML = '<p class="selection-empty">从左侧内容池选择条目后，这里会实时显示结果。</p>';
+          return;
+        }
+
+        sidebarStatus.textContent = '已准备生成，可直接提交';
+        summaryList.innerHTML = selectedCards.slice(0, 6).map((card) => {
+          const title = card.querySelector('strong')?.textContent?.trim() || card.dataset.itemValue || '未命名内容';
+          return '<div class="selection-row">' + title + '</div>';
+        }).join('');
+      }
+
+      function syncCardState(card) {
+        const checkbox = card.querySelector('.content-checkbox');
+        const selected = Boolean(checkbox?.checked);
+        card.classList.toggle('is-selected', selected);
+        card.setAttribute('aria-selected', selected ? 'true' : 'false');
+      }
+
+      function applySelectedFilter() {
+        const onlySelected = Boolean(selectedFilter?.checked);
+        cards.forEach((card) => {
+          const isSelected = Boolean(card.querySelector('.content-checkbox')?.checked);
+          card.hidden = onlySelected && !isSelected;
+        });
+      }
+
+      function syncAllCards() {
+        cards.forEach(syncCardState);
+        updateSummary();
+        applySelectedFilter();
+      }
+
+      function activateCategory(categoryId) {
+        triggers.forEach((trigger) => {
+          const active = trigger.dataset.categoryTrigger === categoryId;
+          trigger.classList.toggle('is-active', active);
+          trigger.setAttribute('aria-pressed', active ? 'true' : 'false');
+        });
+        panels.forEach((panel) => {
+          panel.classList.toggle('is-active', panel.dataset.categoryPanel === categoryId);
+        });
+      }
+
+      async function saveCookie() {
+        if (!cookieInput || !cookiePanel) return;
+
+        const value = cookieInput.value.trim();
+        if (!value) {
+          showToast('Folo Cookie 不能为空', 'error');
+          cookieInput.focus();
+          return;
+        }
+
+        localStorage.setItem(cookieStorageKey, value);
+        showToast('Cookie 已保存');
+        cookiePanel.hidden = true;
+      }
+
+      async function fetchLatest(button, category = null) {
+        if (!button) return;
+
+        const originalText = button.textContent;
+        const foloCookie = localStorage.getItem(cookieStorageKey);
+        button.disabled = true;
+        button.textContent = '抓取中...';
+
+        try {
+          const response = await fetch('/writeData', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ category, foloCookie }),
+          });
+
+          if (!response.ok) {
+            const text = await response.text();
+            showToast(text || '抓取失败，请稍后重试', 'error');
+            return;
+          }
+
+          showToast(category ? '分类抓取完成，页面即将刷新' : '数据抓取完成，页面即将刷新');
+          window.setTimeout(() => window.location.reload(), 800);
+        } catch (error) {
+          showToast(error?.message || '抓取失败，请检查网络', 'error');
+        } finally {
+          button.disabled = false;
+          button.textContent = originalText;
+        }
+      }
+
+      form.addEventListener('submit', (event) => {
+        if (getSelectedCards().length === 0) {
+          event.preventDefault();
+          showToast('请至少选择一条内容后再生成', 'error');
+        }
+      });
+
+      checkboxes.forEach((checkbox) => {
+        checkbox.addEventListener('change', () => {
+          syncAllCards();
+        });
+      });
+
+      cards.forEach((card) => {
+        card.addEventListener('click', (event) => {
+          if (event.target.closest('a, button, input, label')) return;
+          const checkbox = card.querySelector('.content-checkbox');
+          if (!checkbox) return;
+          checkbox.checked = !checkbox.checked;
+          syncAllCards();
+        });
+      });
+
+      triggers.forEach((trigger) => {
+        trigger.addEventListener('click', () => activateCategory(trigger.dataset.categoryTrigger));
+      });
+
+      selectedFilter?.addEventListener('change', applySelectedFilter);
+      root.querySelector('[data-open-cookie-panel]')?.addEventListener('click', () => {
+        if (cookiePanel) cookiePanel.hidden = false;
+      });
+      root.querySelector('[data-close-cookie-panel]')?.addEventListener('click', () => {
+        if (cookiePanel) cookiePanel.hidden = true;
+      });
+      root.querySelector('[data-save-cookie]')?.addEventListener('click', saveCookie);
+      root.querySelector('[data-fetch-all]')?.addEventListener('click', (event) => {
+        fetchLatest(event.currentTarget);
+      });
+      root.querySelector('[data-clear-selection]')?.addEventListener('click', () => {
+        checkboxes.forEach((checkbox) => {
+          checkbox.checked = false;
+        });
+        syncAllCards();
+        showToast('已清空选择');
+      });
+      mobileSummaryButton?.addEventListener('click', () => {
+        summaryList?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+
+      const savedCookie = localStorage.getItem(cookieStorageKey);
+      if (savedCookie && cookieInput) {
+        cookieInput.value = savedCookie;
+      }
+
+      if (${JSON.stringify(firstCategory)}) {
+        activateCategory(${JSON.stringify(firstCategory)});
+      }
+
+      syncAllCards();
+    })();
+  `;
+
   return renderDashboardPage({
     title: `${safeDisplayDate} ${safeFilterDays}天内的数据`,
     bodyClass: 'page-content-selection',
     bodyContent,
-    inlineScript: '',
+    inlineScript,
   });
 }
