@@ -67,3 +67,25 @@ test('gen ai page sanitizes malicious preview markdown before rendering', () => 
   assert.doesNotMatch(previewHtml, /onerror=/i);
   assert.doesNotMatch(previewHtml, /javascript:/i);
 });
+
+test('gen ai page keeps prompt disclosure explicit and keyboard reachable', () => {
+  const html = generateGenAiPageHtml(
+    createEnv(),
+    'AI日报',
+    '## 今日摘要\n\n这里是正文。',
+    '2026-04-08',
+    false,
+    ['news:1'],
+    'system prompt',
+    'user prompt',
+    null,
+    null,
+    null,
+    '## 今日摘要\n\n这里是正文。',
+    null,
+  );
+
+  assert.match(html, /data-toggle-prompt/);
+  assert.match(html, /data-open-preview/);
+  assert.match(html, /data-run-analysis/);
+});

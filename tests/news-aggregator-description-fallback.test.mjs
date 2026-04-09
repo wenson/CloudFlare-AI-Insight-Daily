@@ -1,9 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { handleWriteData } from '../src/handlers/writeData.js';
+import { getFetchDate, setFetchDate } from '../src/helpers.js';
 
 test('handleWriteData falls back to upstream description when news content is missing', async () => {
   const originalFetch = global.fetch;
+  const previousFetchDate = getFetchDate();
   global.fetch = async () => new Response(JSON.stringify({
     data: [
       {
@@ -45,6 +47,7 @@ test('handleWriteData falls back to upstream description when news content is mi
   });
 
   try {
+    setFetchDate('2026-04-08');
     const response = await handleWriteData(request, env);
     const body = await response.json();
 
@@ -56,6 +59,7 @@ test('handleWriteData falls back to upstream description when news content is mi
     assert.equal(putCalls[0].value[0].description, 'Summary from upstream description.');
     assert.equal(putCalls[0].value[0].details.content_html, '<p>Summary from upstream description.</p>');
   } finally {
+    setFetchDate(previousFetchDate);
     global.fetch = originalFetch;
   }
 });

@@ -127,3 +127,16 @@ test('content selection page keeps summary sidebar usable on mobile and CTA scro
   assert.match(html, /const selectionSidebar = root\.querySelector\('\.selection-sidebar'\);/);
   assert.match(html, /selectionSidebar\?\.scrollIntoView\(\{ behavior: 'smooth', block: 'start' \}\);/);
 });
+
+test('content selection page exposes accessible summary and cookie controls', () => {
+  const html = generateContentSelectionPageHtml(
+    createEnv(),
+    '2026-04-08',
+    createData(),
+    createCategories(),
+  );
+
+  assert.match(html, /aria-live="polite"/);
+  assert.match(html, /aria-label="已选内容摘要"/);
+  assert.match(html, /id="foloCookie"/);
+});

@@ -42,7 +42,7 @@ function createEnv() {
 
 test('worker serves getContent without requiring GitHub env vars', async () => {
   const response = await worker.fetch(
-    new Request('https://example.com/getContent'),
+    new Request('https://example.com/getContent?date=2026-04-08'),
     createEnv(),
   );
 

@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { handleWriteData } from '../src/handlers/writeData.js';
+import { getFetchDate, setFetchDate } from '../src/helpers.js';
 
 async function runUnknownCategoryRequest(category) {
   const putCalls = [];
@@ -43,6 +44,7 @@ test('handleWriteData rejects prototype-chain category names and does not write 
 
 test('handleWriteData reports upstream unauthorized fetch failures instead of silent success', async () => {
   const originalFetch = global.fetch;
+  const previousFetchDate = getFetchDate();
   global.fetch = async () => new Response('Unauthorized', {
     status: 401,
     statusText: 'Unauthorized',
@@ -68,6 +70,7 @@ test('handleWriteData reports upstream unauthorized fetch failures instead of si
   });
 
   try {
+    setFetchDate('2026-04-08');
     const response = await handleWriteData(request, env);
     const body = await response.json();
 
@@ -77,12 +80,14 @@ test('handleWriteData reports upstream unauthorized fetch failures instead of si
     assert.match(body.errors[0], /Unauthorized/i);
     assert.equal(putCalls.length, 0);
   } finally {
+    setFetchDate(previousFetchDate);
     global.fetch = originalFetch;
   }
 });
 
 test('handleWriteData skips entries with invalid publishedAt instead of failing the whole category', async () => {
   const originalFetch = global.fetch;
+  const previousFetchDate = getFetchDate();
   global.fetch = async () => new Response(JSON.stringify({
     data: [
       {
@@ -137,6 +142,7 @@ test('handleWriteData skips entries with invalid publishedAt instead of failing 
   });
 
   try {
+    setFetchDate('2026-04-08');
     const response = await handleWriteData(request, env);
     const body = await response.json();
 
@@ -147,6 +153,7 @@ test('handleWriteData skips entries with invalid publishedAt instead of failing 
     assert.equal(putCalls[0].value.length, 1);
     assert.equal(putCalls[0].value[0].id, 'good-item');
   } finally {
+    setFetchDate(previousFetchDate);
     global.fetch = originalFetch;
   }
 });
