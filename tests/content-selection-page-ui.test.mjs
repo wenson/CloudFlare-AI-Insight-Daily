@@ -102,7 +102,6 @@ test('content selection page ships interaction controller hooks with non-blockin
   assert.match(html, /data-close-cookie-panel/);
   assert.match(html, /data-save-cookie/);
   assert.match(html, /data-fetch-all/);
-  assert.match(html, /data-filter-selected/);
   assert.match(html, /data-clear-selection/);
   assert.match(html, /data-mobile-summary/);
   assert.match(html, /data-selected-count/);

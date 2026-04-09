@@ -111,12 +111,6 @@ export function generateContentSelectionPageHtml(env, dateStr, allData, dataCate
           <div class="workspace-toolbar-left">
             ${categoryNav}
           </div>
-          <div class="workspace-toolbar-right">
-            <label class="toolbar-toggle">
-              <input type="checkbox" data-filter-selected>
-              <span>仅看已选</span>
-            </label>
-          </div>
         </section>
 
         <div class="workspace-grid">
@@ -167,7 +161,6 @@ export function generateContentSelectionPageHtml(env, dateStr, allData, dataCate
       const mobileSummaryButton = root.querySelector('[data-mobile-summary]');
       const cookiePanel = root.querySelector('[data-cookie-panel]');
       const cookieInput = root.querySelector('#foloCookie');
-      const selectedFilter = root.querySelector('[data-filter-selected]');
       const triggers = Array.from(root.querySelectorAll('[data-category-trigger]'));
       const panels = Array.from(root.querySelectorAll('[data-category-panel]'));
       const cards = Array.from(root.querySelectorAll('[data-item-card]'));
@@ -238,18 +231,9 @@ export function generateContentSelectionPageHtml(env, dateStr, allData, dataCate
         card.setAttribute('aria-selected', selected ? 'true' : 'false');
       }
 
-      function applySelectedFilter() {
-        const onlySelected = Boolean(selectedFilter?.checked);
-        cards.forEach((card) => {
-          const isSelected = Boolean(card.querySelector('.content-checkbox')?.checked);
-          card.hidden = onlySelected && !isSelected;
-        });
-      }
-
       function syncAllCards() {
         cards.forEach(syncCardState);
         updateSummary();
-        applySelectedFilter();
       }
 
       function activateCategory(categoryId) {
@@ -336,7 +320,6 @@ export function generateContentSelectionPageHtml(env, dateStr, allData, dataCate
         trigger.addEventListener('click', () => activateCategory(trigger.dataset.categoryTrigger));
       });
 
-      selectedFilter?.addEventListener('change', applySelectedFilter);
       root.querySelector('[data-open-cookie-panel]')?.addEventListener('click', () => {
         if (cookiePanel) cookiePanel.hidden = false;
       });
