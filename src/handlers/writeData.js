@@ -1,7 +1,8 @@
 // src/handlers/writeData.js
 import { getISODate, getFetchDate } from '../helpers.js';
 import { fetchAllData, fetchDataByCategory, dataSources } from '../dataFetchers.js'; // 导入 fetchDataByCategory 和 dataSources
-import { storeInKV } from '../kv.js';
+import { upsertSourceItems } from '../d1.js';
+import { buildSourceItemRecord } from '../sourceItems.js';
 
 export async function handleWriteData(request, env) {
     const dateParam = getFetchDate();
@@ -35,6 +36,15 @@ export async function handleWriteData(request, env) {
                     headers: { 'Content-Type': 'application/json' }
                 });
             }
+            if (!env?.DB || typeof env.DB.prepare !== 'function' || typeof env.DB.batch !== 'function') {
+                return new Response(JSON.stringify({
+                    success: false,
+                    message: "D1 database binding 'DB' with batch support is required for /writeData.",
+                }), {
+                    status: 500,
+                    headers: { 'Content-Type': 'application/json' },
+                });
+            }
             // 只抓取指定分类的数据
             const { data: fetchedData, errors: categoryErrors } = await fetchDataByCategory(env, category, foloCookie);
             dataToStore[category] = fetchedData;
@@ -50,10 +60,19 @@ export async function handleWriteData(request, env) {
                     headers: { 'Content-Type': 'application/json' }
                 });
             }
-            fetchPromises.push(storeInKV(env.DATA_KV, `${dateStr}-${category}`, fetchedData));
+            fetchPromises.push(upsertSourceItems(env.DB, fetchedData.map((item) => buildSourceItemRecord(item, dateStr))));
             successMessage = `Data for category '${category}' fetched and stored.`;
             console.log(`Transformed ${category}: ${fetchedData.length} items.`);
         } else {
+            if (!env?.DB || typeof env.DB.prepare !== 'function' || typeof env.DB.batch !== 'function') {
+                return new Response(JSON.stringify({
+                    success: false,
+                    message: "D1 database binding 'DB' with batch support is required for /writeData.",
+                }), {
+                    status: 500,
+                    headers: { 'Content-Type': 'application/json' },
+                });
+            }
             // 抓取所有分类的数据 (现有逻辑)
             const { data: allUnifiedData, errors: fetchErrors } = await fetchAllData(env, foloCookie);
             errors = fetchErrors;
@@ -70,13 +89,15 @@ export async function handleWriteData(request, env) {
                 });
             }
             
+            const allSourceRecords = [];
             for (const sourceType in dataSources) {
                 if (Object.hasOwnProperty.call(dataSources, sourceType)) {
                     dataToStore[sourceType] = allUnifiedData[sourceType] || [];
-                    fetchPromises.push(storeInKV(env.DATA_KV, `${dateStr}-${sourceType}`, dataToStore[sourceType]));
+                    allSourceRecords.push(...dataToStore[sourceType].map((item) => buildSourceItemRecord(item, dateStr)));
                     console.log(`Transformed ${sourceType}: ${dataToStore[sourceType].length} items.`);
                 }
             }
+            fetchPromises.push(upsertSourceItems(env.DB, allSourceRecords));
             successMessage = `All data categories fetched and stored.`;
         }
 

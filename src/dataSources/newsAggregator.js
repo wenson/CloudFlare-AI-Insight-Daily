@@ -1,12 +1,38 @@
-import { getRandomUserAgent, sleep, isDateWithinLastDays, stripHtml, formatDateToChineseWithTime, escapeHtml, buildCurlCommand } from '../helpers';
+import { getRandomUserAgent, sleep, isDateWithinLastDays, stripHtml, formatDateToChineseWithTime, escapeHtml, buildCurlCommand, getFetchDate } from '../helpers';
+
+function getPublishedBeforeBoundary(filterDays) {
+    const fetchDate = getFetchDate();
+    const [year, month, day] = fetchDate.split('-').map(Number);
+    const utcBoundary = new Date(Date.UTC(year, month - 1, day - (filterDays - 1), -8, 0, 0, 0));
+    return utcBoundary.toISOString();
+}
+
+function buildSourceMeta(entry) {
+    const source = entry?.entries || {};
+    return {
+        guid: source.guid || source.url || null,
+        author_name: source.author || null,
+        author_url: source.authorUrl || source.author_url || null,
+        author_avatar: source.authorAvatar || source.author_avatar || null,
+        inserted_at: source.insertedAt || source.inserted_at || null,
+        language: source.language || null,
+        summary: source.summary || null,
+        categories: source.categories || null,
+        media: source.media || null,
+        attachments: source.attachments || null,
+        extra: source.extra || null,
+        raw_json: source,
+    };
+}
 
 const NewsAggregatorDataSource = {
     type: 'news-aggregator',
     async fetch(env, foloCookie) {
         const listId = env.NEWS_AGGREGATOR_LIST_ID;
-        const fetchPages = parseInt(env.NEWS_AGGREGATOR_FETCH_PAGES || '1', 10);
+        const maxPages = parseInt(env.NEWS_AGGREGATOR_FETCH_PAGES || '1', 10);
         const allNewsItems = [];
         const filterDays = parseInt(env.FOLO_FILTER_DAYS || '3', 10);
+        const limit = 100;
 
         if (!listId) {
             console.warn('NEWS_AGGREGATOR_LIST_ID is not set in environment variables. Skipping news aggregator fetch.');
@@ -20,8 +46,10 @@ const NewsAggregatorDataSource = {
             };
         }
 
+        const publishedBefore = getPublishedBeforeBoundary(filterDays);
         let publishedAfter = null;
-        for (let i = 0; i < fetchPages; i++) {
+
+        for (let i = 0; i < maxPages; i++) {
             const userAgent = getRandomUserAgent();
             const headers = {
                 'User-Agent': userAgent,
@@ -49,6 +77,8 @@ const NewsAggregatorDataSource = {
                 listId: listId,
                 view: 1,
                 withContent: false,
+                limit,
+                publishedBefore,
             };
 
             if (publishedAfter) {
@@ -69,8 +99,10 @@ const NewsAggregatorDataSource = {
                     throw new Error(`News Aggregator request failed: ${response.status} ${response.statusText}`);
                 }
                 const data = await response.json();
-                if (data && data.data && data.data.length > 0) {
-                    const filteredItems = data.data.filter(entry => isDateWithinLastDays(entry.entries.publishedAt, filterDays));
+                const items = Array.isArray(data?.data) ? data.data : [];
+
+                if (items.length > 0) {
+                    const filteredItems = items.filter(entry => isDateWithinLastDays(entry.entries.publishedAt, filterDays));
                     allNewsItems.push(...filteredItems.map(entry => ({
                         id: entry.entries.id,
                         url: entry.entries.url,
@@ -80,8 +112,12 @@ const NewsAggregatorDataSource = {
                         date_published: entry.entries.publishedAt,
                         authors: [{ name: entry.entries.author }],
                         source: entry.entries.author ? `${entry.feeds.title} - ${entry.entries.author}` : entry.feeds.title,
+                        source_meta: buildSourceMeta(entry),
                     })));
-                    publishedAfter = data.data[data.data.length - 1].entries.publishedAt;
+                    publishedAfter = items[items.length - 1].entries.publishedAt;
+                    if (items.length < limit) {
+                        break;
+                    }
                 } else {
                     console.log(`No more data for News Aggregator, page ${i + 1}.`);
                     break;
@@ -123,7 +159,8 @@ const NewsAggregatorDataSource = {
                 source: item.source || 'Aggregated News',
                 details: {
                     content_html: contentHtml
-                }
+                },
+                source_meta: item.source_meta || null,
             };
         });
     },

@@ -1,9 +1,7 @@
 // src/handlers/genAIContent.js
 import { getISODate, escapeHtml, stripHtml, removeMarkdownCodeBlock, formatDateToChinese, convertEnglishQuotesToChinese, formatMarkdownText } from '../helpers.js';
-import { getFromKV } from '../kv.js';
 import { callChatAPI, callChatAPIStream } from '../chatapi.js';
 import { generateGenAiPageHtml } from '../ui/genAiPage.js';
-import { dataSources } from '../dataFetchers.js'; // Import dataSources
 import { getSystemPromptSummarizationStepOne } from "../prompt/summarizationPromptStepZero";
 import { getSystemPromptSummarizationStepTwo } from "../prompt/summarizationPromptStepTwo";
 import { getSystemPromptSummarizationStepThree } from "../prompt/summarizationPromptStepThree";
@@ -14,7 +12,8 @@ import { insertFoot } from '../foot.js';
 import { insertAd } from '../ad.js';
 import { getAppUrl } from '../appUrl.js';
 import { marked } from '../marked.esm.js';
-import { getDailyReportMetadata, upsertDailyReport } from '../d1.js';
+import { getDailyReportMetadata, upsertDailyReport, getSourceItemsBySelectionsInPublishedWindow } from '../d1.js';
+import { getPublishedWindowBounds, mapSourceItemRowToUnifiedItem } from '../sourceItems.js';
 
 async function generateRssSummary(env, dailyMarkdownContent) {
     let rssMarkdown = await callChatAPI(env, dailyMarkdownContent, getSummarizationSimplifyPrompt());
@@ -125,6 +124,7 @@ export async function handleGenAIPodcastScript(request, env) {
 export async function handleGenAIContent(request, env) {
     let dateStr;
     let selectedItemsParams = [];
+    let selectedItemsForAction = [];
     let formData;
 
     let userPromptSummarizationData = null;
@@ -137,34 +137,51 @@ export async function handleGenAIContent(request, env) {
         const dateParam = formData.get('date');
         dateStr = dateParam ? dateParam : getISODate();
         selectedItemsParams = formData.getAll('selectedItems');
+        selectedItemsForAction = selectedItemsParams;
 
         if (selectedItemsParams.length === 0) {
             const errorHtml = generateGenAiPageHtml(env, '生成AI日报出错，未选生成条目', '<p><strong>No items were selected.</strong> Please go back and select at least one item.</p>', dateStr, true, null);
             return new Response(errorHtml, { status: 400, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
         }
+        if (!env?.DB || typeof env.DB.prepare !== 'function') {
+            throw new Error("D1 database binding 'DB' is required for /genAIContent.");
+        }
 
         console.log(`Generating AI content for ${selectedItemsParams.length} selected item references from date ${dateStr}`);
 
-        const allFetchedData = {};
-        const fetchPromises = [];
-        for (const sourceType in dataSources) {
-            if (Object.hasOwnProperty.call(dataSources, sourceType)) {
-                fetchPromises.push(
-                    getFromKV(env.DATA_KV, `${dateStr}-${sourceType}`).then(data => {
-                        allFetchedData[sourceType] = data || [];
-                    })
-                );
-            }
-        }
-        await Promise.allSettled(fetchPromises);
+        const parsedSelections = selectedItemsParams
+            .map((selection) => {
+                const separatorIndex = selection.indexOf(':');
+                if (separatorIndex < 1 || separatorIndex === selection.length - 1) {
+                    return null;
+                }
+                return {
+                    selection,
+                    sourceType: selection.slice(0, separatorIndex),
+                    sourceItemId: selection.slice(separatorIndex + 1),
+                };
+            })
+            .filter(Boolean);
+        const uniqueParsedSelections = Array.from(
+            new Map(parsedSelections.map((entry) => [entry.selection, entry])).values(),
+        );
+        selectedItemsForAction = uniqueParsedSelections.map(({ selection }) => selection);
+
+        const bounds = getPublishedWindowBounds(dateStr, env?.FOLO_FILTER_DAYS);
+        const selectedRows = await getSourceItemsBySelectionsInPublishedWindow(
+            env.DB,
+            uniqueParsedSelections.map(({ sourceType, sourceItemId }) => ({ sourceType, sourceItemId })),
+            bounds,
+        );
+        const selectedItemByKey = new Map(
+            selectedRows.map((row) => [`${row.source_type}:${row.source_item_id}`, mapSourceItemRowToUnifiedItem(row)]),
+        );
 
         const selectedContentItems = [];
         let validItemsProcessedCount = 0;
 
-        for (const selection of selectedItemsParams) {
-            const [type, idStr] = selection.split(':');
-            const itemsOfType = allFetchedData[type];
-            const item = itemsOfType ? itemsOfType.find(dataItem => String(dataItem.id) === idStr) : null;
+        for (const parsedSelection of uniqueParsedSelections) {
+            const item = selectedItemByKey.get(parsedSelection.selection);
 
             if (item) {
                 let itemText = "";
@@ -194,12 +211,12 @@ export async function handleGenAIContent(request, env) {
                     validItemsProcessedCount++;
                 }
             } else {
-                console.warn(`Could not find item for selection: ${selection} on date ${dateStr}.`);
+                console.warn(`Could not find item for selection: ${parsedSelection.selection} in source_items.`);
             }
         }
 
         if (validItemsProcessedCount === 0) {
-            const errorHtml = generateGenAiPageHtml(env, '生成AI日报出错，可生成条目为空', '<p><strong>Selected items could not be retrieved or resulted in no content.</strong> Please check the data or try different selections.</p>', dateStr, true, selectedItemsParams);
+            const errorHtml = generateGenAiPageHtml(env, '生成AI日报出错，可生成条目为空', '<p><strong>Selected items could not be retrieved or resulted in no content.</strong> Please check the data or try different selections.</p>', dateStr, true, selectedItemsForAction);
             return new Response(errorHtml, { status: 404, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
         }
 
@@ -254,7 +271,7 @@ export async function handleGenAIContent(request, env) {
             console.log("Call 2 (Processing Call 1 Output) successful. Output length:", outputOfCall2.length);
         } catch (error) {
             console.error("Error in Chat API Call 2 (Processing Call 1 Output):", error);
-            const errorHtml = generateGenAiPageHtml(env, '生成AI日报出错(格式化)', `<p><strong>Failed during processing of summarized content:</strong> ${escapeHtml(error.message)}</p>${error.stack ? `<pre>${escapeHtml(error.stack)}</pre>` : ''}`, dateStr, true, selectedItemsParams, fullPromptForCall2_System, fullPromptForCall2_User);
+            const errorHtml = generateGenAiPageHtml(env, '生成AI日报出错(格式化)', `<p><strong>Failed during processing of summarized content:</strong> ${escapeHtml(error.message)}</p>${error.stack ? `<pre>${escapeHtml(error.stack)}</pre>` : ''}`, dateStr, true, selectedItemsForAction, fullPromptForCall2_System, fullPromptForCall2_User);
             return new Response(errorHtml, { status: 500, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
         }
 
@@ -284,7 +301,7 @@ export async function handleGenAIContent(request, env) {
             console.log("Call 3 (Processing Call 2 Output) successful. Output length:", outputOfCall3.length);
         } catch (error) {
             console.error("Error in Chat API Call 3 (Processing Call 2 Output):", error);
-            const errorHtml = generateGenAiPageHtml(env, '生成AI日报出错(摘要)', `<p><strong>Failed during processing of summarized content:</strong> ${escapeHtml(error.message)}</p>${error.stack ? `<pre>${escapeHtml(error.stack)}</pre>` : ''}`, dateStr, true, selectedItemsParams, fullPromptForCall3_System, fullPromptForCall3_User);
+            const errorHtml = generateGenAiPageHtml(env, '生成AI日报出错(摘要)', `<p><strong>Failed during processing of summarized content:</strong> ${escapeHtml(error.message)}</p>${error.stack ? `<pre>${escapeHtml(error.stack)}</pre>` : ''}`, dateStr, true, selectedItemsForAction, fullPromptForCall3_System, fullPromptForCall3_User);
             return new Response(errorHtml, { status: 500, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
         }
         dailySummaryMarkdownContent += '\n\n### **今日摘要**\n\n```\n' + outputOfCall3 + '\n```\n\n';
@@ -304,7 +321,7 @@ export async function handleGenAIContent(request, env) {
             daily_markdown: storedDailyMarkdown,
             rss_markdown: rssMarkdown,
             rss_html: rssHtml,
-            source_item_count: selectedItemsParams.length,
+            source_item_count: validItemsProcessedCount,
             created_at: existingMetadata?.created_at || now,
             updated_at: now,
             published_at: existingMetadata?.published_at || now,
@@ -314,7 +331,7 @@ export async function handleGenAIContent(request, env) {
             env,
             'AI日报', // Title for Call 1 page
             dailySummaryMarkdownContent,
-            dateStr, false, selectedItemsParams,
+            dateStr, false, selectedItemsForAction,
             fullPromptForCall2_System, fullPromptForCall2_User,
             null, null, // Pass Call 2 prompts
             convertEnglishQuotesToChinese(removeMarkdownCodeBlock(promptsMarkdownContent)),
@@ -326,7 +343,7 @@ export async function handleGenAIContent(request, env) {
     } catch (error) {
         console.error("Error in /genAIContent (outer try-catch):", error);
         const pageDateForError = dateStr || getISODate();
-        const itemsForActionOnError = Array.isArray(selectedItemsParams) ? selectedItemsParams : [];
+        const itemsForActionOnError = Array.isArray(selectedItemsForAction) ? selectedItemsForAction : [];
         const errorHtml = generateGenAiPageHtml(env, '生成AI日报出错', `<p><strong>Unexpected error:</strong> ${escapeHtml(error.message)}</p>${error.stack ? `<pre>${escapeHtml(error.stack)}</pre>` : ''}`, pageDateForError, true, itemsForActionOnError, fullPromptForCall2_System, fullPromptForCall2_User);
         return new Response(errorHtml, { status: 500, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
     }

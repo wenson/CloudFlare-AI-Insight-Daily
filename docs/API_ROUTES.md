@@ -4,7 +4,7 @@
 
 ## 一句话结论
 
-本项目当前接口分为四类：`认证`、`数据抓取/查看`、`AI 生成`、`RSS 输出`。主流程是：`/getContentHtml → /writeData → /genAIContent`，生成成功后会自动写入 D1，并由 `/rss` 输出摘要。
+本项目当前接口分为四类：`认证`、`数据抓取/查看`、`AI 生成`、`RSS 输出`。主流程是：`/getContentHtml → /writeData → /genAIContent`，内容数据读写走 D1 `source_items`，生成成功后写入 D1 `daily_reports` 并由 `/rss` 输出摘要。
 
 ## 总体路由关系图
 
@@ -34,19 +34,19 @@ sequenceDiagram
     participant AI as Gemini/OpenAI
 
     U->>W: GET /getContentHtml
-    W->>KV: 读取当天各分类内容
+    W->>D1: 读取 source_items 时间窗口内容
     W-->>U: 返回内容选择页
 
     U->>W: POST /writeData
-    W->>KV: 写入 news/paper/socialMedia
+    W->>D1: upsert source_items
     W-->>U: 返回抓取结果
 
     U->>W: POST /genAIContent
-    W->>KV: 读取勾选条目
+    W->>D1: 按 selectedItems 读取 source_items
     W->>AI: 生成日报
     W->>AI: 生成 RSS 摘要
     AI-->>W: 返回日报内容与 RSS 摘要
-    W->>D1: upsert 当天日报记录
+    W->>D1: upsert daily_reports
     W-->>U: 返回日报结果页
 
     U->>W: POST /genAIPodcastScript
@@ -74,15 +74,15 @@ sequenceDiagram
 
 | 路由 | 方法 | 作用 | 主要读写 |
 | --- | --- | --- | --- |
-| `/getContentHtml` | `GET` | 返回内容勾选页面 | 从 KV 读取各分类数据 |
-| `/getContent` | `GET` | 返回指定日期的 JSON 内容 | 从 KV 读取 |
-| `/writeData` | `POST` | 抓取外部数据源并写入 KV | 写入 `YYYY-MM-DD-分类` |
+| `/getContentHtml` | `GET` | 返回内容勾选页面 | 从 D1 `source_items` 按发布时间窗口读取 |
+| `/getContent` | `GET` | 返回指定日期的 JSON 内容 | 从 D1 `source_items` 按发布时间窗口读取 |
+| `/writeData` | `POST` | 抓取外部数据源并持久化原始内容 | upsert D1 `source_items` |
 
 ### 3. AI 生成路由
 
 | 路由 | 方法 | 作用 | 主要读写 |
 | --- | --- | --- | --- |
-| `/genAIContent` | `POST` | 根据勾选内容生成日报并自动发布 RSS 摘要 | 读 KV，调 AI，写 D1 |
+| `/genAIContent` | `POST` | 根据勾选内容生成日报并自动发布 RSS 摘要 | 读 D1 `source_items`，调 AI，写 D1 `daily_reports` |
 | `/genAIPodcastScript` | `POST` | 根据日报内容生成播客稿 | 调用 AI |
 | `/genAIDailyAnalysis` | `POST` | 对日报做二次分析 | 调用 AI |
 | `/genAIDailyPage` | `GET` | 生成日报空白模板页 | 不依赖抓取数据 |
@@ -97,15 +97,15 @@ sequenceDiagram
 
 ### 1. 打开内容页
 
-用户访问 `/getContentHtml` 后，Worker 会按分类从 KV 读取当天内容，并渲染为勾选页面。
+用户访问 `/getContentHtml` 后，Worker 会按 `date + FOLO_FILTER_DAYS` 对应的发布时间窗口从 D1 `source_items` 读取内容，并渲染为勾选页面。
 
 ### 2. 抓取数据
 
-用户点击页面上的抓取按钮后，浏览器调用 `/writeData`，并把 `foloCookie` 放进请求体。Worker 请求 Folo，并把结果写回 KV。
+用户点击页面上的抓取按钮后，浏览器调用 `/writeData`，并把 `foloCookie` 放进请求体。Worker 请求 Folo，并把标准化结果 upsert 到 D1 `source_items`。
 
 ### 3. 生成日报
 
-用户勾选条目后提交到 `/genAIContent`。Worker 先从 KV 读取被选中的条目，再拼成 prompt 调用 AI，随后把日报正文与 RSS 摘要一起写入 D1，最后返回结果页。
+用户勾选条目后提交到 `/genAIContent`。Worker 按 `selectedItems=type:id` 从 D1 `source_items` 精确读取条目，再拼成 prompt 调用 AI，随后把日报正文与 RSS 摘要写入 D1 `daily_reports`，最后返回结果页。
 
 ### 4. 派生播客与分析
 

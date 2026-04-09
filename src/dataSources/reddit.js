@@ -1,5 +1,23 @@
 import { getRandomUserAgent, sleep, isDateWithinLastDays, stripHtml, formatDateToChineseWithTime, escapeHtml, buildCurlCommand} from '../helpers';
 
+function buildSourceMeta(entry) {
+    const source = entry?.entries || {};
+    return {
+        guid: source.guid || source.url || null,
+        author_name: source.author || null,
+        author_url: source.authorUrl || source.author_url || null,
+        author_avatar: source.authorAvatar || source.author_avatar || null,
+        inserted_at: source.insertedAt || source.inserted_at || null,
+        language: source.language || null,
+        summary: source.summary || null,
+        categories: source.categories || null,
+        media: source.media || null,
+        attachments: source.attachments || null,
+        extra: source.extra || null,
+        raw_json: source,
+    };
+}
+
 const RedditDataSource = {
     async fetch(env, foloCookie) {
         const listId = env.REDDIT_LIST_ID;
@@ -78,6 +96,7 @@ const RedditDataSource = {
                         date_published: entry.entries.publishedAt,
                         authors: [{ name: entry.entries.author }],
                         source: `${entry.feeds.title}` ,
+                        source_meta: buildSourceMeta(entry),
                     })));
                     publishedAfter = data.data[data.data.length - 1].entries.publishedAt;
                 } else {
@@ -130,7 +149,8 @@ const RedditDataSource = {
             source: item.source || 'reddit',
             details: {
                 content_html: item.content_html || ""
-            }
+            },
+            source_meta: item.source_meta || null,
         }));
     },
 

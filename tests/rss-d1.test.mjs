@@ -4,27 +4,54 @@ import worker from '../src/index.js';
 import { upsertDailyReport } from '../src/d1.js';
 import { handleGenAIContent } from '../src/handlers/genAIContent.js';
 
-function createDb(results = []) {
+function createDb(options = []) {
+  const config = Array.isArray(options)
+    ? { allResults: options }
+    : (options || {});
   const state = {
     sql: '',
     args: [],
+    calls: [],
   };
 
   return {
     state,
     prepare(sql) {
+      const call = { sql, args: [] };
+      state.calls.push(call);
       state.sql = sql;
       return {
         bind(...args) {
+          call.args = args;
           state.args = args;
           return {
             async run() {
               return { success: true };
             },
             async all() {
-              return { results };
+              if (/FROM source_items/i.test(sql) && /source_type = \? AND source_item_id = \?/i.test(sql)) {
+                if (/published_at\s*>=\s*\?\s*AND\s*published_at\s*<=\s*\?/i.test(sql)) {
+                  const startAt = args[args.length - 2];
+                  const endAt = args[args.length - 1];
+                  const filtered = (config.selectionResults || []).filter((row) => (
+                    row.published_at >= startAt && row.published_at <= endAt
+                  ));
+                  return { results: filtered };
+                }
+                return { results: config.selectionResults || [] };
+              }
+              if (/FROM source_items/i.test(sql)) {
+                return { results: config.publishedWindowResults || config.allResults || [] };
+              }
+              if (/FROM daily_reports/i.test(sql)) {
+                return { results: config.dailyReportResults || config.allResults || [] };
+              }
+              return { results: config.allResults || [] };
             },
             async first() {
+              if (/FROM daily_reports/i.test(sql)) {
+                return config.dailyReportMetadata || null;
+              }
               return null;
             },
           };
@@ -141,8 +168,22 @@ function createGeminiJsonResponse(text) {
 }
 
 test('genAIContent stores daily and rss outputs in D1 after generation succeeds', async () => {
-  const env = createEnv();
+  const env = createEnv({
+    selectionResults: [{
+      source_type: 'news',
+      source_name: 'Source N',
+      source_item_id: '1',
+      title: 'Test title',
+      url: 'https://example.com/news/1',
+      author_name: 'Author N',
+      description_text: 'News summary',
+      content_html: '<p>Test content</p>',
+      published_at: '2026-04-08T08:00:00.000Z',
+    }],
+  });
+  let kvGetCalls = 0;
   env.DATA_KV.get = async (key) => {
+    kvGetCalls += 1;
     if (key === '2026-04-08-news') {
       return JSON.stringify([{
         id: '1',
@@ -161,7 +202,11 @@ test('genAIContent stores daily and rss outputs in D1 after generation succeeds'
 
   const originalFetch = global.fetch;
   let fetchCalls = 0;
-  global.fetch = async () => {
+  const requestBodies = [];
+  global.fetch = async (_url, init) => {
+    if (init?.body) {
+      requestBodies.push(JSON.parse(init.body));
+    }
     fetchCalls += 1;
     if (fetchCalls === 1) {
       return createSseResponse('Formatted daily body');
@@ -195,6 +240,154 @@ test('genAIContent stores daily and rss outputs in D1 after generation succeeds'
     assert.match(env.DB.state.args[2], /Formatted daily body/);
     assert.match(env.DB.state.args[3], /RSS summary line/);
     assert.match(env.DB.state.args[4], /<p>RSS summary line<\/p>/);
+    assert.equal(kvGetCalls, 0);
+    assert.match(requestBodies[0].contents[0].parts[0].text, /News Title: Test title/);
+    const sourceSelectionCall = env.DB.state.calls.find((call) => /FROM source_items/i.test(call.sql) && /source_type = \? AND source_item_id = \?/i.test(call.sql));
+    assert.ok(sourceSelectionCall);
+    assert.deepEqual(sourceSelectionCall.args, [
+      'news',
+      '1',
+      '2026-04-07T16:00:00.000Z',
+      '2026-04-08T15:59:59.999Z',
+    ]);
+  } finally {
+    global.fetch = originalFetch;
+  }
+});
+
+test('genAIContent resolves selected item from D1 multi-day window selections even when per-day KV is empty', async () => {
+  const env = createEnv({
+    selectionResults: [{
+      source_type: 'socialMedia',
+      source_name: 'Source S',
+      source_item_id: 'social-window-1',
+      title: 'Window social title',
+      url: 'https://example.com/social-window-1',
+      author_name: 'Author S',
+      description_text: 'Social summary',
+      content_html: '<p>window content</p>',
+      published_at: '2026-04-08T07:00:00.000Z',
+    }, {
+      source_type: 'socialMedia',
+      source_name: 'Source S',
+      source_item_id: 'social-old-1',
+      title: 'Old social title',
+      url: 'https://example.com/social-old-1',
+      author_name: 'Author Old',
+      description_text: 'Old summary',
+      content_html: '<p>old content</p>',
+      published_at: '2026-04-06T07:00:00.000Z',
+    }],
+  });
+  env.FOLO_FILTER_DAYS = '2';
+  let kvGetCalls = 0;
+  env.DATA_KV.get = async () => {
+    kvGetCalls += 1;
+    return JSON.stringify([]);
+  };
+
+  const originalFetch = global.fetch;
+  let fetchCalls = 0;
+  const requestBodies = [];
+  global.fetch = async (_url, init) => {
+    if (init?.body) {
+      requestBodies.push(JSON.parse(init.body));
+    }
+    fetchCalls += 1;
+    if (fetchCalls === 1) return createSseResponse('Formatted daily body');
+    if (fetchCalls === 2) return createSseResponse('Short daily summary');
+    if (fetchCalls === 3) return createGeminiJsonResponse('RSS summary line');
+    throw new Error(`Unexpected fetch call ${fetchCalls}`);
+  };
+
+  try {
+    const formBody = new URLSearchParams();
+    formBody.set('date', '2026-04-09');
+    formBody.append('selectedItems', 'socialMedia:social-window-1');
+    formBody.append('selectedItems', 'socialMedia:social-old-1');
+
+    const response = await handleGenAIContent(new Request('https://example.com/genAIContent', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: formBody,
+    }), env);
+
+    assert.equal(response.status, 200);
+    assert.equal(kvGetCalls, 0);
+    assert.match(requestBodies[0].contents[0].parts[0].text, /https:\/\/example\.com\/social-window-1/);
+    assert.doesNotMatch(requestBodies[0].contents[0].parts[0].text, /https:\/\/example\.com\/social-old-1/);
+    assert.equal(env.DB.state.args[5], 1);
+    const sourceSelectionCall = env.DB.state.calls.find((call) => /FROM source_items/i.test(call.sql) && /source_type = \? AND source_item_id = \?/i.test(call.sql));
+    assert.ok(sourceSelectionCall);
+    assert.deepEqual(sourceSelectionCall.args, [
+      'socialMedia',
+      'social-window-1',
+      'socialMedia',
+      'social-old-1',
+      '2026-04-07T16:00:00.000Z',
+      '2026-04-09T15:59:59.999Z',
+    ]);
+  } finally {
+    global.fetch = originalFetch;
+  }
+});
+
+test('genAIContent deduplicates duplicate selectedItems for prompt assembly and persisted source count', async () => {
+  const env = createEnv({
+    selectionResults: [{
+      source_type: 'news',
+      source_name: 'Source N',
+      source_item_id: 'dup-1',
+      title: 'Duplicate title',
+      url: 'https://example.com/news-dup-1',
+      author_name: 'Author N',
+      description_text: 'Duplicate summary',
+      content_html: '<p>dup content</p>',
+      published_at: '2026-04-08T08:00:00.000Z',
+    }],
+  });
+  env.FOLO_FILTER_DAYS = '2';
+
+  const originalFetch = global.fetch;
+  let fetchCalls = 0;
+  const requestBodies = [];
+  global.fetch = async (_url, init) => {
+    if (init?.body) {
+      requestBodies.push(JSON.parse(init.body));
+    }
+    fetchCalls += 1;
+    if (fetchCalls === 1) return createSseResponse('Formatted daily body');
+    if (fetchCalls === 2) return createSseResponse('Short daily summary');
+    if (fetchCalls === 3) return createGeminiJsonResponse('RSS summary line');
+    throw new Error(`Unexpected fetch call ${fetchCalls}`);
+  };
+
+  try {
+    const formBody = new URLSearchParams();
+    formBody.set('date', '2026-04-09');
+    formBody.append('selectedItems', 'news:dup-1');
+    formBody.append('selectedItems', 'news:dup-1');
+
+    const response = await handleGenAIContent(new Request('https://example.com/genAIContent', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: formBody,
+    }), env);
+    const html = await response.text();
+
+    assert.equal(response.status, 200);
+    const firstPromptBody = requestBodies[0].contents[0].parts[0].text;
+    assert.equal((firstPromptBody.match(/News Title: Duplicate title/g) || []).length, 1);
+    assert.equal(env.DB.state.args[5], 1);
+    assert.equal((html.match(/name="selectedItems" value="news:dup-1"/g) || []).length, 2);
+    const sourceSelectionCall = env.DB.state.calls.find((call) => /FROM source_items/i.test(call.sql) && /source_type = \? AND source_item_id = \?/i.test(call.sql));
+    assert.ok(sourceSelectionCall);
+    assert.deepEqual(sourceSelectionCall.args, [
+      'news',
+      'dup-1',
+      '2026-04-07T16:00:00.000Z',
+      '2026-04-09T15:59:59.999Z',
+    ]);
   } finally {
     global.fetch = originalFetch;
   }

@@ -1,7 +1,7 @@
 // src/handlers/getContent.js
 import { getISODate } from '../helpers.js';
-import { getFromKV } from '../kv.js';
-import { dataSources } from '../dataFetchers.js'; // Import dataSources
+import { listSourceItemsByPublishedWindow } from '../d1.js';
+import { getPublishedWindowBounds, mapSourceItemRowToUnifiedItem, groupSourceItemsByType } from '../sourceItems.js';
 
 export async function handleGetContent(request, env) {
     const url = new URL(request.url);
@@ -14,18 +14,15 @@ export async function handleGetContent(request, env) {
             message: `Successfully retrieved data for ${dateStr}.`
         };
 
-        const fetchPromises = [];
-        for (const sourceType in dataSources) {
-            if (Object.hasOwnProperty.call(dataSources, sourceType)) {
-                fetchPromises.push(
-                    getFromKV(env.DATA_KV, `${dateStr}-${sourceType}`).then(data => {
-                        responseData[sourceType] = data || [];
-                    })
-                );
-            }
+        if (!env?.DB || typeof env.DB.prepare !== 'function') {
+            throw new Error("D1 database binding 'DB' is required for /getContent.");
         }
-        await Promise.allSettled(fetchPromises);
-        
+
+        const bounds = getPublishedWindowBounds(dateStr, env?.FOLO_FILTER_DAYS);
+        const rows = await listSourceItemsByPublishedWindow(env.DB, bounds);
+        const grouped = groupSourceItemsByType(rows.map(mapSourceItemRowToUnifiedItem));
+        Object.assign(responseData, grouped);
+
         return new Response(JSON.stringify(responseData), { headers: { 'Content-Type': 'application/json' } });
     } catch (error) {
         console.error("Error in /getContent:", error);

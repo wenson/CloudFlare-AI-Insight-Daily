@@ -4,6 +4,13 @@
 
 本次改动把“抓取到的原始新闻、论文、社媒内容”从 Cloudflare KV 迁移到 Cloudflare D1，并停止内容数据的 KV 读写，改为 D1-only。原始内容统一存入一张明细表 `source_items`，生成后的日报正文与 RSS 摘要继续存入现有的 `daily_reports` 表。登录 session 仍保留在 KV，不属于本次迁移范围。
 
+本设计明确采用 `latest-view` 语义，不提供历史快照：
+
+- `/rss` 始终反映当前最新内容
+- `/getContentHtml?date=YYYY-MM-DD` 按该日期对应的发布时间窗口，从当前 `source_items` 最新内容重建页面
+- `/genAIContent` 在重生成旧日期日报时，也使用当前 `source_items` 里的最新内容
+- 后续补抓、回填、标题改动、正文改动，都允许影响历史 `date=` 页面和旧日报重生成结果
+
 ## 目标
 
 - 停止使用 KV 存储内容数据，原始抓取结果全面迁移到 D1。
@@ -17,6 +24,7 @@
 - 不在本次设计中把分类分页升级为服务端分页；页面分页先保持前端分类内分页思路。
 - 不改动 AI 生成 prompt 的业务语义。
 - 不把不同来源拆成多张明细表。
+- 不提供“按抓取当天冻结”的历史内容快照或版本化回放能力。
 
 ## 设计方案
 
@@ -121,6 +129,11 @@ ON source_items (last_seen_date);
 
 这保持了当前页面“时间窗口 N 天”的语义不变。
 
+补充说明：
+
+- 该窗口查询基于 `source_items` 当前最新内容重算，不保证历史日期页面是不可变快照。
+- 如果一条旧内容在后续被重新抓取并覆盖字段，历史 `date=` 页面和旧日报重生成都会看到最新版本。
+
 ### 链路改造
 
 #### `/writeData`
@@ -191,6 +204,8 @@ ON source_items (last_seen_date);
   - 控制：对 `/writeData`、`/getContent`、`/getContentHtml`、`/genAIContent` 做全文搜索和定向测试
 - 风险 5：D1 表膨胀导致查询变慢
   - 控制：为 `(published_at, source_type)` 和 `last_seen_date` 建索引
+- 风险 6：历史 `date=` 页面和旧日报重生成结果会随内容更新而漂移
+  - 控制：这是明确接受的产品语义；若未来需要不可变历史视图，再单独设计快照层
 
 ## 验收标准
 

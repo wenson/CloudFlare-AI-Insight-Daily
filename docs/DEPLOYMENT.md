@@ -5,12 +5,12 @@
 当前项目只包含一条运行主链路：
 
 - Cloudflare Worker：处理登录、抓取、内容生成与页面渲染
-- Cloudflare KV：保存登录 session 与按日期分类的抓取结果
-- Cloudflare D1：保存生成后的日报正文与 RSS 摘要
+- Cloudflare KV：仅保存登录 session
+- Cloudflare D1：保存抓取内容明细 `source_items` 与生成结果 `daily_reports`
 - Folo / Follow API：作为新闻、论文和社交内容来源
 - Gemini 或 OpenAI 兼容接口：生成日报、播客稿和分析内容
 
-项目已不再包含 GitHub 提交链路，但当前版本会在生成日报后自动写入 D1，并由 Worker 直接输出 RSS。
+项目已不再包含 GitHub 提交链路。当前版本中，`/writeData` 会把内容 upsert 到 D1 `source_items`，`/genAIContent` 会把生成结果 upsert 到 D1 `daily_reports`，`/rss` 直接读取 `daily_reports`。
 
 ### 1. 准备环境
 
@@ -44,7 +44,7 @@ npx wrangler kv namespace create DATA_KV
 npx wrangler d1 create ai-daily
 ```
 
-把命令返回的 `database_id` 填到 [wrangler.toml](/Volumes/c/Workspace/CloudFlare-AI-Insight-Daily/wrangler.toml) 里的 `[[d1_databases]]`，然后执行表结构初始化：
+把命令返回的 `database_id` 填到 [wrangler.toml](/Volumes/c/Workspace/CloudFlare-AI-Insight-Daily/wrangler.toml) 里的 `[[d1_databases]]`，然后执行表结构初始化（会创建 `source_items` 与 `daily_reports` 等表）：
 
 ```bash
 npx wrangler d1 execute ai-daily --local --file=schema.sql
@@ -54,6 +54,12 @@ npx wrangler d1 execute ai-daily --local --file=schema.sql
 
 ```bash
 npx wrangler d1 execute ai-daily --remote --file=schema.sql
+```
+
+可选检查（确认 `source_items` 已存在）：
+
+```bash
+npx wrangler d1 execute ai-daily --local --command="SELECT name FROM sqlite_master WHERE type='table' AND name IN ('source_items','daily_reports');"
 ```
 
 ### 3. 配置非敏感变量
@@ -105,8 +111,8 @@ npx wrangler dev
 
 说明：
 
-- `wrangler dev` 默认使用本地 KV，不会直接读线上 KV 数据
-- `wrangler dev` 配合 `wrangler d1 execute ... --local` 可以直接调试本地 D1
+- `wrangler dev` 默认使用本地 KV（主要影响登录 session），不会直接读线上 KV 数据
+- `wrangler dev` 配合 `wrangler d1 execute ... --local` 可以直接调试本地 D1（`source_items`/`daily_reports`）
 - Folo Cookie 由浏览器 `localStorage` 保存，不需要写入 Worker 环境变量
 
 ### 6. 部署到 Cloudflare
@@ -157,6 +163,7 @@ npx wrangler deploy --dry-run
 
 ### 9. 当前发布语义
 
-- `/genAIContent` 生成成功后会自动 upsert 当天日报到 D1
+- `/writeData` 成功后会把抓取内容 upsert 到 D1 `source_items`
+- `/genAIContent` 生成成功后会自动 upsert 当天日报到 D1 `daily_reports`
 - 同一天重新生成会覆盖正文和 RSS 摘要，不会产生重复 feed 项
-- `/rss?days=7` 默认读取最近 7 天的 D1 记录
+- `/rss?days=7` 默认读取最近 7 天的 D1 `daily_reports` 记录

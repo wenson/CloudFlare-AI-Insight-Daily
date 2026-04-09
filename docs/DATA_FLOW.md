@@ -1,10 +1,10 @@
 # 数据源与数据流
 
-本文说明项目的数据从哪里来、如何进入系统，以及在 Worker 内部如何流转。本文基于当前代码实际实现，描述的是 `KV + D1` 架构下的主链路。
+本文说明项目的数据从哪里来、如何进入系统，以及在 Worker 内部如何流转。本文基于当前代码实际实现，描述的是“内容数据 D1-only + KV 仅会话”的主链路。
 
 ## 一句话结论
 
-本项目的主链路是：`浏览器 → Cloudflare Worker → Folo → Cloudflare KV → AI 生成 → Cloudflare D1 → 浏览器结果页 / RSS`。
+本项目的主链路是：`浏览器 → Cloudflare Worker → Folo → Cloudflare D1(source_items) → AI 生成 → Cloudflare D1(daily_reports) → 浏览器结果页 / RSS`。
 
 ## 总体数据流图
 
@@ -19,7 +19,7 @@ flowchart TD
 
     W --> D1[Folo API<br/>FOLO_DATA_API]
     D1 --> E[各 DataSource 抓取并标准化]
-    E --> F[Cloudflare KV<br/>按日期+分类存储]
+    E --> F[Cloudflare D1<br/>source_items]
 
     U --> G[POST /genAIContent]
     G --> W
@@ -35,7 +35,7 @@ flowchart TD
     I --> L[生成播客稿]
     L --> U
 
-    J --> O[写入 Cloudflare D1<br/>日报正文 + RSS 摘要]
+    J --> O[写入 Cloudflare D1<br/>daily_reports]
     O --> P[GET /rss]
 
     U --> M[POST /genAIDailyAnalysis]
@@ -75,19 +75,19 @@ sequenceDiagram
     participant AI as Gemini/OpenAI
 
     User->>Worker: GET /getContentHtml
-    Worker->>KV: 读取当天已有内容
+    Worker->>D1: 读取 source_items 时间窗口内容
     Worker-->>User: 返回勾选页面
 
     User->>Worker: POST /writeData + foloCookie
     Worker->>Folo: 拉取新闻 / 论文 / 社交内容
-    Worker->>KV: 按分类写入
+    Worker->>D1: upsert 到 source_items
 
     User->>Worker: POST /genAIContent
-    Worker->>KV: 读取已抓取内容
+    Worker->>D1: 读取选中 source_items
     Worker->>AI: 生成日报
     Worker->>AI: 生成 RSS 摘要
     AI-->>Worker: 返回日报内容与 RSS 摘要
-    Worker->>D1: upsert 当天日报记录
+    Worker->>D1: upsert daily_reports
     Worker-->>User: 展示日报结果页
 
     User->>Worker: POST /genAIPodcastScript
@@ -111,28 +111,27 @@ sequenceDiagram
 
 ### 2. Cloudflare KV
 
-用于保存：
-
-- 按日期和分类缓存的抓取结果
-- 登录 session
+当前仅用于登录 session。
 
 典型键名示例：
 
-- `2026-04-07-news`
-- `2026-04-07-paper`
-- `2026-04-07-socialMedia`
 - `session:<session_id>`
 
 ### 3. Cloudflare D1
 
-用于保存生成后的正式产物：
+用于保存抓取与生成两类核心数据：
+
+- `source_items`：抓取后的新闻/论文/社媒原始内容明细
+- `daily_reports`：生成后的日报与 RSS 摘要
+
+`daily_reports` 里包含：
 
 - `daily_markdown`
 - `rss_markdown`
 - `rss_html`
 - `published_at` / `updated_at`
 
-它是 `/rss` 的唯一数据来源，也是“生成即发布”的持久化落点。
+`/writeData`、`/getContent`、`/getContentHtml`、`/genAIContent` 的内容数据都以 `source_items` 为准；`/rss` 的唯一来源是 `daily_reports`。
 
 ## 代码中的关键入口
 
@@ -152,4 +151,4 @@ sequenceDiagram
 ## 补充说明
 
 - `src/dataSources/` 目录下的文件并不会自动生效，真正启用哪些数据源由 [src/dataFetchers.js](/Volumes/c/Workspace/CloudFlare-AI-Insight-Daily/src/dataFetchers.js) 决定。
-- Worker 已不再把日报或播客写入 GitHub，但会把日报正文与 RSS 摘要写入 D1。
+- Worker 已不再把日报或播客写入 GitHub，且内容数据不再写入 KV。

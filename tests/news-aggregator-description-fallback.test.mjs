@@ -3,6 +3,30 @@ import assert from 'node:assert/strict';
 import { handleWriteData } from '../src/handlers/writeData.js';
 import { getFetchDate, setFetchDate } from '../src/helpers.js';
 
+function createDb() {
+  const state = {
+    batches: [],
+  };
+
+  return {
+    state,
+    prepare(sql) {
+      return {
+        bind(...args) {
+          return {
+            sql,
+            args,
+          };
+        },
+      };
+    },
+    async batch(statements) {
+      state.batches.push(statements);
+      return statements.map(() => ({ success: true }));
+    },
+  };
+}
+
 test('handleWriteData falls back to upstream description when news content is missing', async () => {
   const originalFetch = global.fetch;
   const previousFetchDate = getFetchDate();
@@ -28,12 +52,14 @@ test('handleWriteData falls back to upstream description when news content is mi
   });
 
   const putCalls = [];
+  const db = createDb();
   const env = {
     DATA_KV: {
       async put(key, value, options) {
         putCalls.push({ key, value: JSON.parse(value), options });
       },
     },
+    DB: db,
     FOLO_DATA_API: 'https://api.follow.is/entries',
     FOLO_FILTER_DAYS: '1',
     NEWS_AGGREGATOR_LIST_ID: 'configured-list-id',
@@ -54,10 +80,12 @@ test('handleWriteData falls back to upstream description when news content is mi
     assert.equal(response.status, 200);
     assert.equal(body.success, true);
     assert.equal(body.newsItemCount, 1);
-    assert.equal(putCalls.length, 1);
-    assert.equal(putCalls[0].value.length, 1);
-    assert.equal(putCalls[0].value[0].description, 'Summary from upstream description.');
-    assert.equal(putCalls[0].value[0].details.content_html, '<p>Summary from upstream description.</p>');
+    assert.equal(putCalls.length, 0);
+    assert.equal(db.state.batches.length, 1);
+    assert.equal(db.state.batches[0].length, 1);
+    assert.match(db.state.batches[0][0].sql, /INSERT INTO source_items/);
+    assert.equal(db.state.batches[0][0].args[9], 'Summary from upstream description.');
+    assert.equal(db.state.batches[0][0].args[10], '<p>Summary from upstream description.</p>');
   } finally {
     setFetchDate(previousFetchDate);
     global.fetch = originalFetch;
