@@ -87,3 +87,50 @@ test('news aggregator uses a fixed publishedBefore boundary and publishedAfter a
     setFetchDate(previousFetchDate);
   }
 });
+
+test('news aggregator auto-paginates beyond the first page when the upstream still has more items', async () => {
+  const originalFetch = global.fetch;
+  const originalRandom = Math.random;
+  const previousFetchDate = getFetchDate();
+
+  const pageOne = Array.from({ length: 100 }, (_, index) => {
+    const timestamp = new Date(Date.parse('2026-04-09T15:59:59.000Z') - (index * 60 * 1000)).toISOString();
+    return makeEntry(`auto-${index + 1}`, timestamp);
+  });
+  const pageTwo = [
+    makeEntry('auto-101', '2026-04-08T02:00:00.000Z'),
+  ];
+
+  let fetchCallCount = 0;
+  global.fetch = async () => {
+    const payload = fetchCallCount === 0
+      ? { data: pageOne }
+      : fetchCallCount === 1
+        ? { data: pageTwo }
+        : { data: [] };
+
+    fetchCallCount += 1;
+    return new Response(JSON.stringify(payload), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  };
+  Math.random = () => 0;
+
+  try {
+    setFetchDate('2026-04-09');
+
+    const rawData = await NewsAggregatorDataSource.fetch({
+      FOLO_DATA_API: 'https://api.follow.is/entries',
+      FOLO_FILTER_DAYS: '2',
+      NEWS_AGGREGATOR_LIST_ID: 'configured-list-id',
+    }, 'valid-cookie');
+
+    assert.equal(fetchCallCount, 2);
+    assert.equal(rawData.items.length, 101);
+  } finally {
+    global.fetch = originalFetch;
+    Math.random = originalRandom;
+    setFetchDate(previousFetchDate);
+  }
+});

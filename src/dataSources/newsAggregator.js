@@ -29,7 +29,7 @@ const NewsAggregatorDataSource = {
     type: 'news-aggregator',
     async fetch(env, foloCookie) {
         const listId = env.NEWS_AGGREGATOR_LIST_ID;
-        const maxPages = parseInt(env.NEWS_AGGREGATOR_FETCH_PAGES || '1', 10);
+        const maxPages = parseInt(env.NEWS_AGGREGATOR_FETCH_PAGES || '20', 10);
         const allNewsItems = [];
         const filterDays = parseInt(env.FOLO_FILTER_DAYS || '3', 10);
         const limit = 100;
