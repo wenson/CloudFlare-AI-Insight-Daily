@@ -75,6 +75,34 @@ test('handleWriteData rejects prototype-chain category names and does not write 
   assert.equal(putCalls.length, 0);
 });
 
+test('handleWriteData rejects truthy non-string categories before fetching', async () => {
+  const db = createDb();
+  const env = {
+    DATA_KV: {
+      async put() {},
+    },
+    DB: db,
+    FOLO_DATA_API: 'https://api.follow.is/entries',
+    FOLO_FILTER_DAYS: '1',
+    NEWS_AGGREGATOR_LIST_ID: 'configured-list-id',
+    NEWS_AGGREGATOR_FETCH_PAGES: '1',
+  };
+
+  const request = new Request('https://example.com/writeData', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ category: 123, foloCookie: 'cookie' }),
+  });
+
+  const response = await handleWriteData(request, env);
+  const body = await response.json();
+
+  assert.equal(response.status, 400);
+  assert.equal(body.success, false);
+  assert.match(body.message, /Unknown category/i);
+  assert.equal(env.DB.state.batches.length, 0);
+});
+
 test('handleWriteData reports upstream unauthorized fetch failures instead of silent success', async () => {
   const originalFetch = global.fetch;
   const previousFetchDate = getFetchDate();

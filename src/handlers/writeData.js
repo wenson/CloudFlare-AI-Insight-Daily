@@ -5,13 +5,13 @@ import { runSourceItemIngestion } from '../services/sourceItemIngestion.js';
 export async function handleWriteData(request, env) {
   const dateParam = getFetchDate();
   const dateStr = dateParam ? dateParam : getISODate();
-  let category = null;
+  let category;
   let foloCookie = null;
 
   try {
     if (request.headers.get('Content-Type')?.includes('application/json')) {
       const requestBody = await request.json();
-      category = typeof requestBody.category === 'string' ? requestBody.category : null;
+      category = requestBody.category;
       foloCookie = typeof requestBody.foloCookie === 'string' ? requestBody.foloCookie : null;
     }
 
