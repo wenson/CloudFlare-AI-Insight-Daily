@@ -400,11 +400,14 @@ export function generateContentSelectionPageHtml(env, dateStr, allData, dataCate
         window.setTimeout(() => toast.remove(), 2400);
       }
 
-      function setAdvancedActionsOpen(nextOpen) {
+      function setAdvancedActionsOpen(nextOpen, { restoreToggleFocus = false } = {}) {
         if (!advancedActionsPanel || !advancedActionsToggle) return;
         advancedActionsPanel.hidden = !nextOpen;
         advancedActionsToggle.setAttribute('aria-expanded', nextOpen ? 'true' : 'false');
         advancedActionsToggle.textContent = nextOpen ? '收起高级操作' : '高级操作';
+        if (!nextOpen && restoreToggleFocus) {
+          advancedActionsToggle.focus();
+        }
       }
 
       function readSelectedItemsMap() {
@@ -985,7 +988,7 @@ export function generateContentSelectionPageHtml(env, dateStr, allData, dataCate
       });
 
       root.querySelector('[data-close-cookie-panel]')?.addEventListener('click', () => {
-        setAdvancedActionsOpen(false);
+        setAdvancedActionsOpen(false, { restoreToggleFocus: true });
       });
       root.querySelector('[data-save-cookie]')?.addEventListener('click', saveCookie);
       root.querySelector('[data-fetch-all]')?.addEventListener('click', (event) => {

@@ -304,6 +304,49 @@ export function getDashboardStyles() {
       display: grid;
       gap: 16px;
     }
+    .selection-summary-stats {
+      display: grid;
+      gap: 10px;
+      margin-top: 12px;
+    }
+    .selection-stat {
+      display: grid;
+      gap: 4px;
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      background: var(--surface);
+    }
+    .selection-stat-empty {
+      display: grid;
+      gap: 4px;
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      background: var(--surface);
+    }
+    .selection-stat strong {
+      color: var(--text);
+      font-size: 14px;
+      line-height: 1.3;
+    }
+    .selection-stat span {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.4;
+    }
+    .selection-stat-empty {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.4;
+    }
+    .selection-recent-list {
+      display: grid;
+      gap: 8px;
+      max-height: 260px;
+      overflow: auto;
+      padding-right: 2px;
+    }
     .selection-summary-card,
     .selection-archive-card,
     .analysis-panel,

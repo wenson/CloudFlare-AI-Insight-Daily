@@ -164,10 +164,15 @@ test('content selection page ships interaction controller hooks with non-blockin
   assert.match(html, /const advancedActionsPanel = root\.querySelector\('\[data-advanced-actions-panel\]'\);/);
   assert.match(html, /const advancedActionsToggle = root\.querySelector\('\[data-toggle-advanced-actions\]'\);/);
   assert.match(html, /const summaryStats = root\.querySelector\('\[data-selection-summary-stats\]'\);/);
-  assert.match(html, /function setAdvancedActionsOpen\(nextOpen\)/);
+  assert.match(html, /function setAdvancedActionsOpen\(nextOpen, \{ restoreToggleFocus = false \} = \{\}\)/);
   assert.match(html, /advancedActionsToggle\.setAttribute\('aria-expanded', nextOpen \? 'true' : 'false'\);/);
+  assert.match(html, /advancedActionsToggle\.focus\(\)/);
   assert.match(html, /const advancedToggle = event\.target\.closest\('\[data-toggle-advanced-actions\]'\);/);
-  assert.match(html, /root\.querySelector\('\[data-close-cookie-panel\]'\)\?\.addEventListener\('click', \(\) => \{\s*setAdvancedActionsOpen\(false\);/);
+  assert.match(html, /root\.querySelector\('\[data-close-cookie-panel\]'\)\?\.addEventListener\('click', \(\) => \{\s*setAdvancedActionsOpen\(false, \{ restoreToggleFocus: true \}\);/);
+  assert.match(html, /\.selection-summary-stats\s*\{/);
+  assert.match(html, /\.selection-stat\s*\{/);
+  assert.match(html, /\.selection-stat-empty\s*\{/);
+  assert.match(html, /\.selection-recent-list\s*\{/);
   assert.doesNotMatch(html, /data-open-cookie-panel/);
   assert.doesNotMatch(html, /cookiePanel\.hidden = true/);
   assert.doesNotMatch(html, /alert\(/);
