@@ -32,8 +32,11 @@ test('gen ai page renders reader and action rail layout', () => {
   );
 
   assert.match(html, /report-layout/);
+  assert.match(html, /report-page-hero/);
   assert.match(html, /report-reader/);
+  assert.match(html, /report-reader-shell/);
   assert.match(html, /report-actions/);
+  assert.match(html, /report-sidebar-section/);
   assert.match(html, /analysis-panel/);
   assert.match(html, /prompt-panel/);
   assert.match(html, /data-open-preview/);

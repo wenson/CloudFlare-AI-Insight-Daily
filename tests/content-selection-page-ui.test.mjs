@@ -76,6 +76,11 @@ test('content selection page renders the dashboard shell and explicit summary re
   assert.match(html, /data-selection-archive/);
   assert.match(html, /selection-summary-card[\s\S]*data-selection-summary-list[\s\S]*selection-sidebar-footer/);
   assert.match(html, /selection-archive-card[\s\S]*data-selection-archive/);
+  assert.match(html, /workspace-status-band/);
+  assert.match(html, /workspace-section-card/);
+  assert.match(html, /workspace-aside-section/);
+  assert.match(html, /advanced-actions-panel/);
+  assert.match(html, /report-reader-shell/);
   assert.match(html, /今天/);
   assert.match(html, /href="\/getContentHtml\?date=2026-04-10&category=news&pageSize=20"/);
   assert.match(html, /2026\/4\/7/);

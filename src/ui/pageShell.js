@@ -5,19 +5,23 @@ export function renderToastRegion() {
 export function getDashboardStyles() {
   return `
     :root {
-      --bg: #f3f4f6;
-      --surface: #fcfcfd;
+      --bg: #f4f6f3;
+      --bg-accent: linear-gradient(135deg, #f7fbff 0%, #eef4ff 52%, #f7f5ed 100%);
+      --surface: #f9fafb;
       --surface-strong: #ffffff;
-      --border: #d8dee7;
-      --text: #172033;
-      --muted: #5b6474;
-      --primary: #2563eb;
-      --primary-soft: #dbeafe;
-      --accent: #d97706;
-      --accent-soft: #fef3c7;
+      --surface-muted: #f4f7fb;
+      --border: #d8e1eb;
+      --border-strong: #c6d3e1;
+      --text: #182131;
+      --muted: #5d6878;
+      --primary: #2558d9;
+      --primary-soft: #e7efff;
+      --accent: #b7791f;
+      --accent-soft: #fff1d6;
       --success: #15803d;
       --danger: #b91c1c;
-      --shadow: 0 16px 40px rgba(15, 23, 42, 0.08);
+      --shadow-sm: 0 10px 24px rgba(15, 23, 42, 0.04);
+      --shadow: 0 20px 48px rgba(15, 23, 42, 0.08);
       --radius-lg: 20px;
       --radius-md: 14px;
       --radius-sm: 10px;
@@ -26,7 +30,7 @@ export function getDashboardStyles() {
     * { box-sizing: border-box; }
     html, body { margin: 0; padding: 0; min-height: 100%; }
     body {
-      background: linear-gradient(180deg, #eef2ff 0%, #f8fafc 30%, #f3f4f6 100%);
+      background: var(--bg-accent);
       color: var(--text);
       font-family: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
       line-height: 1.6;
@@ -84,10 +88,7 @@ export function getDashboardStyles() {
       opacity: 0.7;
       transform: none;
     }
-    .button:focus-visible {
-      outline: 3px solid rgba(37, 99, 235, 0.28);
-      outline-offset: 2px;
-    }
+    .button:focus-visible { outline: 3px solid rgba(37, 88, 217, 0.28); outline-offset: 2px; }
     .button-primary {
       background: var(--primary);
       color: #fff;
@@ -103,6 +104,25 @@ export function getDashboardStyles() {
       color: var(--muted);
     }
     .workspace-shell, .report-layout { display: grid; gap: 20px; }
+    .workspace-status-band,
+    .report-page-hero {
+      display: grid;
+      gap: 18px;
+      padding: 24px;
+      background: var(--bg-accent);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+    }
+    .workspace-section-card,
+    .workspace-aside-section,
+    .report-sidebar-section,
+    .advanced-actions-panel,
+    .report-reader-shell {
+      background: var(--surface-strong);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-sm);
+    }
     .workspace-header, .report-header {
       display: flex;
       justify-content: space-between;
@@ -405,6 +425,15 @@ export function getDashboardStyles() {
       .back-to-top-button { bottom: 84px; right: 16px; }
       .selection-sidebar { display: grid; }
       .selection-summary-mobile { display: block; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        animation: none !important;
+        transition: none !important;
+        scroll-behavior: auto !important;
+      }
     }
   `;
 }
