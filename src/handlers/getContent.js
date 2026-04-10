@@ -1,7 +1,7 @@
 // src/handlers/getContent.js
 import { getISODate } from '../helpers.js';
 import { listSourceItemsByPublishedWindow } from '../d1.js';
-import { getPublishedWindowBounds, mapSourceItemRowToUnifiedItem, groupSourceItemsByType } from '../sourceItems.js';
+import { getPublishedDayBounds, mapSourceItemRowToUnifiedItem, groupSourceItemsByType } from '../sourceItems.js';
 
 export async function handleGetContent(request, env) {
     const url = new URL(request.url);
@@ -18,7 +18,7 @@ export async function handleGetContent(request, env) {
             throw new Error("D1 database binding 'DB' is required for /getContent.");
         }
 
-        const bounds = getPublishedWindowBounds(dateStr, env?.FOLO_FILTER_DAYS);
+        const bounds = getPublishedDayBounds(dateStr);
         const rows = await listSourceItemsByPublishedWindow(env.DB, bounds);
         const grouped = groupSourceItemsByType(rows.map(mapSourceItemRowToUnifiedItem));
         Object.assign(responseData, grouped);

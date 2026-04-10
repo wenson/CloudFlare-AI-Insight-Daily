@@ -255,7 +255,7 @@ test('genAIContent stores daily and rss outputs in D1 after generation succeeds'
   }
 });
 
-test('genAIContent resolves selected item from D1 multi-day window selections even when per-day KV is empty', async () => {
+test('genAIContent resolves selected item from D1 same-day selections even when per-day KV is empty', async () => {
   const env = createEnv({
     selectionResults: [{
       source_type: 'socialMedia',
@@ -266,7 +266,7 @@ test('genAIContent resolves selected item from D1 multi-day window selections ev
       author_name: 'Author S',
       description_text: 'Social summary',
       content_html: '<p>window content</p>',
-      published_at: '2026-04-08T07:00:00.000Z',
+      published_at: '2026-04-09T07:00:00.000Z',
     }, {
       source_type: 'socialMedia',
       source_name: 'Source S',
@@ -276,7 +276,7 @@ test('genAIContent resolves selected item from D1 multi-day window selections ev
       author_name: 'Author Old',
       description_text: 'Old summary',
       content_html: '<p>old content</p>',
-      published_at: '2026-04-06T07:00:00.000Z',
+      published_at: '2026-04-08T07:00:00.000Z',
     }],
   });
   env.FOLO_FILTER_DAYS = '2';
@@ -324,7 +324,7 @@ test('genAIContent resolves selected item from D1 multi-day window selections ev
       'social-window-1',
       'socialMedia',
       'social-old-1',
-      '2026-04-07T16:00:00.000Z',
+      '2026-04-08T16:00:00.000Z',
       '2026-04-09T15:59:59.999Z',
     ]);
   } finally {
@@ -343,7 +343,7 @@ test('genAIContent deduplicates duplicate selectedItems for prompt assembly and 
       author_name: 'Author N',
       description_text: 'Duplicate summary',
       content_html: '<p>dup content</p>',
-      published_at: '2026-04-08T08:00:00.000Z',
+      published_at: '2026-04-09T08:00:00.000Z',
     }],
   });
   env.FOLO_FILTER_DAYS = '2';
@@ -385,7 +385,7 @@ test('genAIContent deduplicates duplicate selectedItems for prompt assembly and 
     assert.deepEqual(sourceSelectionCall.args, [
       'news',
       'dup-1',
-      '2026-04-07T16:00:00.000Z',
+      '2026-04-08T16:00:00.000Z',
       '2026-04-09T15:59:59.999Z',
     ]);
   } finally {

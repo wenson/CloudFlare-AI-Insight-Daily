@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   buildSourceItemRecord,
+  getPublishedDayBounds,
   getPublishedWindowBounds,
   mapSourceItemRowToUnifiedItem,
   groupSourceItemsByType,
@@ -9,24 +10,34 @@ import {
 import {
   upsertSourceItem,
   listSourceItemsByPublishedWindow,
+  listSourceItemsByPublishedWindowAndType,
+  countSourceItemsByPublishedWindowGroupedByType,
+  listSourceItemArchiveDays,
   getSourceItemsBySelections,
 } from '../src/d1.js';
 
-function createDb(results = []) {
-  const state = { sql: '', args: [] };
+function createDb(config = []) {
+  const normalized = Array.isArray(config) ? { allResults: config } : (config || {});
+  const state = { sql: '', args: [], calls: [] };
   return {
     state,
     prepare(sql) {
       state.sql = sql;
+      const call = { sql, args: [] };
+      state.calls.push(call);
       return {
         bind(...args) {
           state.args = args;
+          call.args = args;
           return {
             async run() {
               return { success: true };
             },
             async all() {
-              return { results };
+              return { results: normalized.allResults || [] };
+            },
+            async first() {
+              return normalized.firstResult || null;
             },
           };
         },
@@ -74,6 +85,15 @@ test('getPublishedWindowBounds returns the shanghai day window for FOLO_FILTER_D
 
   assert.deepEqual(bounds, {
     startAt: '2026-04-07T16:00:00.000Z',
+    endAt: '2026-04-09T15:59:59.999Z',
+  });
+});
+
+test('getPublishedDayBounds returns only the requested shanghai day window', () => {
+  const bounds = getPublishedDayBounds('2026-04-09');
+
+  assert.deepEqual(bounds, {
+    startAt: '2026-04-08T16:00:00.000Z',
     endAt: '2026-04-09T15:59:59.999Z',
   });
 });
@@ -186,6 +206,76 @@ test('listSourceItemsByPublishedWindow queries the published_at range in descend
   assert.match(db.state.sql, /WHERE published_at >= \? AND published_at <= \?/);
   assert.match(db.state.sql, /ORDER BY published_at DESC/);
   assert.equal(results.length, 1);
+});
+
+test('listSourceItemsByPublishedWindowAndType applies source_type filter and pagination', async () => {
+  const db = createDb([{ source_item_id: 'news-51' }]);
+  const results = await listSourceItemsByPublishedWindowAndType(db, {
+    startAt: '2026-04-07T16:00:00.000Z',
+    endAt: '2026-04-09T15:59:59.999Z',
+    sourceType: 'news',
+    limit: 50,
+    offset: 50,
+  });
+
+  assert.match(db.state.sql, /WHERE published_at >= \? AND published_at <= \?/);
+  assert.match(db.state.sql, /AND source_type = \?/);
+  assert.match(db.state.sql, /LIMIT \? OFFSET \?/);
+  assert.deepEqual(db.state.args, [
+    '2026-04-07T16:00:00.000Z',
+    '2026-04-09T15:59:59.999Z',
+    'news',
+    50,
+    50,
+  ]);
+  assert.equal(results.length, 1);
+});
+
+test('countSourceItemsByPublishedWindowGroupedByType returns grouped totals', async () => {
+  const db = createDb([
+    { source_type: 'news', total_count: 123 },
+    { source_type: 'socialMedia', total_count: 8 },
+  ]);
+  const results = await countSourceItemsByPublishedWindowGroupedByType(db, {
+    startAt: '2026-04-07T16:00:00.000Z',
+    endAt: '2026-04-09T15:59:59.999Z',
+  });
+
+  assert.match(db.state.sql, /SELECT source_type, COUNT\(\*\) AS total_count/);
+  assert.match(db.state.sql, /GROUP BY source_type/);
+  assert.deepEqual(db.state.args, ['2026-04-07T16:00:00.000Z', '2026-04-09T15:59:59.999Z']);
+  assert.deepEqual(results, [
+    { source_type: 'news', total_count: 123 },
+    { source_type: 'socialMedia', total_count: 8 },
+  ]);
+});
+
+test('listSourceItemArchiveDays groups source items by shanghai published date descending', async () => {
+  const db = createDb([
+    {
+      archive_date: '2026-04-10',
+      total_count: 12,
+      news_count: 5,
+      paper_count: 3,
+      social_media_count: 4,
+      latest_published_at: '2026-04-10T12:00:00.000Z',
+    },
+  ]);
+  const results = await listSourceItemArchiveDays(db);
+
+  assert.match(db.state.sql, /strftime\('%Y-%m-%d', datetime\(published_at, '\+8 hours'\)\)/);
+  assert.match(db.state.sql, /GROUP BY archive_date/);
+  assert.match(db.state.sql, /ORDER BY archive_date DESC/);
+  assert.deepEqual(results, [
+    {
+      archive_date: '2026-04-10',
+      total_count: 12,
+      news_count: 5,
+      paper_count: 3,
+      social_media_count: 4,
+      latest_published_at: '2026-04-10T12:00:00.000Z',
+    },
+  ]);
 });
 
 test('getSourceItemsBySelections fetches exact type and id pairs', async () => {

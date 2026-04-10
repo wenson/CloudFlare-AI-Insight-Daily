@@ -13,7 +13,7 @@ import { insertAd } from '../ad.js';
 import { getAppUrl } from '../appUrl.js';
 import { marked } from '../marked.esm.js';
 import { getDailyReportMetadata, upsertDailyReport, getSourceItemsBySelectionsInPublishedWindow } from '../d1.js';
-import { getPublishedWindowBounds, mapSourceItemRowToUnifiedItem } from '../sourceItems.js';
+import { getPublishedDayBounds, mapSourceItemRowToUnifiedItem } from '../sourceItems.js';
 
 async function generateRssSummary(env, dailyMarkdownContent) {
     let rssMarkdown = await callChatAPI(env, dailyMarkdownContent, getSummarizationSimplifyPrompt());
@@ -167,7 +167,7 @@ export async function handleGenAIContent(request, env) {
         );
         selectedItemsForAction = uniqueParsedSelections.map(({ selection }) => selection);
 
-        const bounds = getPublishedWindowBounds(dateStr, env?.FOLO_FILTER_DAYS);
+        const bounds = getPublishedDayBounds(dateStr);
         const selectedRows = await getSourceItemsBySelectionsInPublishedWindow(
             env.DB,
             uniqueParsedSelections.map(({ sourceType, sourceItemId }) => ({ sourceType, sourceItemId })),

@@ -137,6 +137,24 @@ export async function listDailyReports(db, days) {
     return result.results || [];
 }
 
+export async function listSourceItemArchiveDays(db) {
+    const result = await db.prepare(`
+        SELECT
+            strftime('%Y-%m-%d', datetime(published_at, '+8 hours')) AS archive_date,
+            COUNT(*) AS total_count,
+            SUM(CASE WHEN source_type = 'news' THEN 1 ELSE 0 END) AS news_count,
+            SUM(CASE WHEN source_type = 'paper' THEN 1 ELSE 0 END) AS paper_count,
+            SUM(CASE WHEN source_type = 'socialMedia' THEN 1 ELSE 0 END) AS social_media_count,
+            MAX(published_at) AS latest_published_at
+        FROM source_items
+        WHERE published_at IS NOT NULL AND published_at != ''
+        GROUP BY archive_date
+        ORDER BY archive_date DESC
+    `).bind().all();
+
+    return result.results || [];
+}
+
 export async function upsertSourceItem(db, item) {
     return prepareUpsertSourceItem(db, item).run();
 }
@@ -159,6 +177,42 @@ export async function listSourceItemsByPublishedWindow(db, bounds) {
         WHERE published_at >= ? AND published_at <= ?
         ORDER BY published_at DESC
     `).bind(bounds.startAt, bounds.endAt).all();
+
+    return result.results || [];
+}
+
+export async function countSourceItemsByPublishedWindowGroupedByType(db, bounds) {
+    const result = await db.prepare(`
+        SELECT source_type, COUNT(*) AS total_count
+        FROM source_items
+        WHERE published_at >= ? AND published_at <= ?
+        GROUP BY source_type
+    `).bind(bounds.startAt, bounds.endAt).all();
+
+    return result.results || [];
+}
+
+export async function listSourceItemsByPublishedWindowAndType(db, {
+    startAt,
+    endAt,
+    sourceType,
+    limit,
+    offset,
+}) {
+    if (!sourceType) {
+        return [];
+    }
+
+    const safeLimit = Math.max(1, Number(limit) || 50);
+    const safeOffset = Math.max(0, Number(offset) || 0);
+    const result = await db.prepare(`
+        SELECT *
+        FROM source_items
+        WHERE published_at >= ? AND published_at <= ?
+          AND source_type = ?
+        ORDER BY published_at DESC
+        LIMIT ? OFFSET ?
+    `).bind(startAt, endAt, sourceType, safeLimit, safeOffset).all();
 
     return result.results || [];
 }

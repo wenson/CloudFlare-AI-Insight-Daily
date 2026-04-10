@@ -2,6 +2,8 @@
 import { handleWriteData } from './handlers/writeData.js';
 import { handleGetContent } from './handlers/getContent.js';
 import { handleGetContentHtml } from './handlers/getContentHtml.js';
+import { handleGetContentPage } from './handlers/getContentPage.js';
+import { handleGetContentArchive } from './handlers/getContentArchive.js';
 import { handleGenAIContent, handleGenAIPodcastScript, handleGenAIDailyAnalysis } from './handlers/genAIContent.js';
 import { handleGenAIDailyPage } from './handlers/genAIDailyPage.js';
 import { handleRss } from './handlers/getRss.js';
@@ -85,6 +87,10 @@ export default {
                     name: dataSources[key].name
                 }));
                 response = await handleGetContentHtml(request, env, dataCategories);
+            } else if (path === '/getContentPage' && request.method === 'GET') {
+                response = await handleGetContentPage(request, env);
+            } else if (path === '/contentArchive' && request.method === 'GET') {
+                response = await handleGetContentArchive(request, env);
             } else if (path === '/genAIContent' && request.method === 'POST') {
                 response = await handleGenAIContent(request, env);
             } else if (path === '/genAIPodcastScript' && request.method === 'POST') { // New route for podcast script

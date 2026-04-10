@@ -147,15 +147,92 @@ export function getDashboardStyles() {
       flex-wrap: wrap;
       gap: 10px;
     }
+    .workspace-toolbar-right {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: flex-end;
+    }
+    .batch-size-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: flex-end;
+    }
+    .batch-size-chip {
+      cursor: pointer;
+      transition: background-color 180ms ease, border-color 180ms ease, color 180ms ease;
+    }
+    .batch-size-chip.is-active {
+      background: var(--primary-soft);
+      border-color: #93c5fd;
+      color: #1d4ed8;
+    }
     .workspace-grid, .report-grid {
       display: grid;
       grid-template-columns: minmax(0, 1fr) 320px;
       gap: 20px;
       align-items: start;
     }
+    .archive-list {
+      display: grid;
+      gap: 16px;
+    }
+    .archive-card {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 20px;
+      padding: 24px;
+    }
+    .archive-card h2 {
+      margin: 0;
+      font-size: 1.4rem;
+      line-height: 1.15;
+    }
+    .archive-card-copy {
+      display: grid;
+      gap: 10px;
+    }
+    .archive-card-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      justify-content: flex-end;
+    }
     .workspace-main, .report-actions { display: grid; gap: 16px; }
     .category-panel { display: none; gap: 16px; }
     .category-panel.is-active { display: grid; }
+    .category-list {
+      display: grid;
+      gap: 16px;
+    }
+    .load-more-state {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      padding: 16px 20px;
+    }
+    .load-more-copy {
+      display: grid;
+      gap: 4px;
+    }
+    .load-more-copy p {
+      margin: 0;
+    }
+    .load-more-range {
+      font-weight: 700;
+      color: var(--text);
+    }
+    .load-more-sentinel {
+      height: 1px;
+      width: 100%;
+    }
+    .load-more-state p[data-load-more-status] {
+      color: var(--muted);
+      font-size: 14px;
+    }
     .content-card {
       display: grid;
       grid-template-columns: 44px minmax(0, 1fr);
@@ -167,7 +244,15 @@ export function getDashboardStyles() {
     .content-card:hover { transform: translateY(-1px); border-color: #bfd0ff; }
     .content-card.is-selected { background: #eff6ff; border-color: #93c5fd; }
     .content-card-index { font-size: 12px; font-weight: 700; color: var(--accent); margin-bottom: 8px; }
-    .selection-sidebar, .analysis-panel, .prompt-panel, .cookie-panel { padding: 20px; }
+    .selection-sidebar {
+      display: grid;
+      gap: 16px;
+    }
+    .selection-summary-card,
+    .selection-archive-card,
+    .analysis-panel,
+    .prompt-panel,
+    .cookie-panel { padding: 20px; }
     .report-rail {
       display: grid;
       gap: 16px;
@@ -190,6 +275,49 @@ export function getDashboardStyles() {
       flex-wrap: wrap;
       gap: 12px;
       margin-top: 16px;
+    }
+    .selection-sidebar-archive {
+      display: grid;
+      gap: 12px;
+      margin-top: 16px;
+    }
+    .selection-sidebar-archive h3 {
+      margin: 0;
+      font-size: 14px;
+    }
+    .selection-sidebar-archive-list {
+      display: grid;
+      gap: 8px;
+    }
+    .archive-sidebar-link {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: var(--surface);
+      color: var(--text);
+      text-decoration: none;
+      transition: border-color 180ms ease, transform 180ms ease, background-color 180ms ease;
+    }
+    .archive-sidebar-link:hover {
+      border-color: #bfd0ff;
+      background: #f8fbff;
+      transform: translateY(-1px);
+    }
+    .archive-sidebar-count {
+      color: var(--muted);
+      font-size: 12px;
+      white-space: nowrap;
+    }
+    .back-to-top-button {
+      position: fixed;
+      right: 20px;
+      bottom: 20px;
+      z-index: 120;
+      box-shadow: var(--shadow);
     }
     .selection-summary-mobile { display: none; position: fixed; left: 12px; right: 12px; bottom: 12px; z-index: 100; }
     .report-reader {
@@ -256,6 +384,25 @@ export function getDashboardStyles() {
       .workspace-header, .report-header, .workspace-toolbar { padding: 16px; }
       .workspace-header, .report-header, .workspace-toolbar { flex-direction: column; }
       .workspace-grid, .report-grid { grid-template-columns: 1fr; }
+      .archive-card {
+        padding: 16px;
+        flex-direction: column;
+      }
+      .archive-card-actions {
+        width: 100%;
+        justify-content: flex-start;
+      }
+      .workspace-toolbar-right,
+      .batch-size-group {
+        width: 100%;
+        justify-content: flex-start;
+      }
+      .load-more-state {
+        padding: 16px;
+        align-items: flex-start;
+        flex-direction: column;
+      }
+      .back-to-top-button { bottom: 84px; right: 16px; }
       .selection-sidebar { display: grid; }
       .selection-summary-mobile { display: block; }
     }

@@ -44,15 +44,47 @@ test('content selection page renders the dashboard shell and explicit summary re
     '2026-04-08',
     createData(),
     createCategories(),
+    {
+      archiveDays: [
+        {
+          archive_date: '2026-04-07',
+          total_count: 9,
+          news_count: 4,
+          paper_count: 2,
+          social_media_count: 3,
+        },
+        {
+          archive_date: '2026-04-06',
+          total_count: 5,
+          news_count: 3,
+          paper_count: 1,
+          social_media_count: 1,
+        },
+      ],
+    },
   );
 
   assert.ok(html.includes('<main class="workspace-shell">'));
   assert.ok(html.includes('<header class="workspace-header card">'));
-  assert.ok(html.includes('<aside class="selection-sidebar card" aria-label="已选内容摘要">'));
+  assert.ok(html.includes('<aside class="selection-sidebar" aria-label="内容侧栏">'));
+  assert.ok(html.includes('<section class="selection-summary-card card" aria-label="已选内容摘要">'));
+  assert.ok(html.includes('<section class="selection-archive-card card" aria-label="内容归档">'));
   assert.ok(html.includes('<button type="button" class="selection-summary-mobile button button-primary" data-mobile-summary>'));
   assert.ok(html.includes('class="category-pill chip is-active"'));
   assert.ok(html.includes('>生成 AI 日报</button>'));
+  assert.match(html, /data-selection-archive/);
+  assert.match(html, /selection-summary-card[\s\S]*data-selection-summary-list[\s\S]*selection-sidebar-footer/);
+  assert.match(html, /selection-archive-card[\s\S]*data-selection-archive/);
+  assert.match(html, /2026\/4\/7/);
+  assert.match(html, /2026\/4\/6/);
+  assert.match(html, /href="\/getContentHtml\?date=2026-04-07&category=news&pageSize=20"/);
+  assert.match(html, /href="\/getContentHtml\?date=2026-04-06&category=news&pageSize=20"/);
+  assert.match(html, /<h2>内容归档<\/h2>/);
+  const headerActionsMatch = html.match(/<div class="workspace-actions">([\s\S]*?)<\/div>\s*<\/header>/);
+  assert.ok(headerActionsMatch);
+  assert.doesNotMatch(headerActionsMatch[1], /href="\/contentArchive"/);
   assert.doesNotMatch(html, /ondblclick=/);
+  assert.match(html, /发布日期 2026\/4\/8/);
 });
 
 test('content selection page resolves renderer by type instead of fixed first source index', () => {
@@ -83,7 +115,7 @@ test('content selection page resolves renderer by type instead of fixed first so
     );
 
     assert.match(html, /Second source renderer/);
-    assert.doesNotMatch(html, /Fallback title/);
+    assert.doesNotMatch(html, /<strong>Fallback title<\/strong>/);
   } finally {
     dataSources.news.sources = originalNewsSources;
   }
@@ -125,6 +157,13 @@ test('content selection page keeps summary sidebar usable on mobile and CTA scro
   );
   assert.match(html, /const selectionSidebar = root\.querySelector\('\.selection-sidebar'\);/);
   assert.match(html, /selectionSidebar\?\.scrollIntoView\(\{ behavior: 'smooth', block: 'start' \}\);/);
+  assert.match(html, /data-back-to-top/);
+  assert.match(html, /window\.scrollTo\(\{ top: 0, behavior: 'smooth' \}\);/);
+  assert.match(html, /window\.addEventListener\('scroll', syncBackToTopVisibility, \{ passive: true \}\);/);
+  assert.match(
+    html,
+    /@media \(max-width: 768px\)[\s\S]*?\.back-to-top-button \{ bottom: 84px; right: 16px; \}/,
+  );
 });
 
 test('content selection page exposes accessible summary and cookie controls', () => {
@@ -138,4 +177,71 @@ test('content selection page exposes accessible summary and cookie controls', ()
   assert.match(html, /aria-live="polite"/);
   assert.match(html, /aria-label="已选内容摘要"/);
   assert.match(html, /id="foloCookie"/);
+});
+
+test('content selection page renders batch-size controls and incremental loading hooks', () => {
+  const html = generateContentSelectionPageHtml(
+    createEnv(),
+    '2026-04-08',
+    createData(),
+    createCategories(),
+    {
+      activeCategory: 'news',
+      pageSize: 20,
+      archiveDays: [
+        {
+          archive_date: '2026-04-07',
+          total_count: 9,
+          news_count: 4,
+          paper_count: 2,
+          social_media_count: 3,
+        },
+      ],
+      categoryPagination: {
+        news: {
+          currentPage: 1,
+          totalPages: 7,
+          totalItems: 125,
+          startItem: 1,
+          endItem: 20,
+          nextOffset: 20,
+          hasMore: true,
+        },
+        paper: {
+          currentPage: 1,
+          totalPages: 1,
+          totalItems: 0,
+          startItem: 0,
+          endItem: 0,
+          nextOffset: null,
+          hasMore: false,
+        },
+        socialMedia: {
+          currentPage: 1,
+          totalPages: 1,
+          totalItems: 0,
+          startItem: 0,
+          endItem: 0,
+          nextOffset: null,
+          hasMore: false,
+        },
+      },
+    },
+  );
+
+  assert.match(html, /每批 20 条/);
+  assert.match(html, /每批 50 条/);
+  assert.match(html, /每批 100 条/);
+  assert.match(html, /data-batch-size-option="20"/);
+  assert.match(html, /data-load-more-sentinel/);
+  assert.match(html, /data-load-more-status/);
+  assert.match(html, /IntersectionObserver/);
+  assert.match(html, /history\.replaceState/);
+  assert.match(html, /fetch\(.*\/getContentPage/);
+  assert.match(html, /nextOffset/);
+  assert.match(html, /hasMore/);
+  assert.match(html, /const selectionStorageKey = /);
+  assert.match(html, /data-selection-hidden-inputs/);
+  assert.match(html, /input\.name = 'selectedItems';/);
+  assert.match(html, /selectedItemsMap/);
 });

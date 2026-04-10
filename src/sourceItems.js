@@ -45,6 +45,17 @@ export function getPublishedWindowBounds(dateStr, filterDays) {
   };
 }
 
+export function getPublishedDayBounds(dateStr) {
+  const [year, month, day] = dateStr.split('-').map(Number);
+  const start = new Date(Date.UTC(year, month - 1, day, -8, 0, 0, 0));
+  const end = new Date(Date.UTC(year, month - 1, day, 15, 59, 59, 999));
+
+  return {
+    startAt: start.toISOString(),
+    endAt: end.toISOString(),
+  };
+}
+
 export function buildSourceItemRecord(item, fetchDate, now = new Date().toISOString()) {
   const meta = item?.source_meta || {};
   const hasRawJson = Object.prototype.hasOwnProperty.call(meta, 'raw_json');
