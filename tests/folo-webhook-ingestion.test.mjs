@@ -157,6 +157,32 @@ test('runFoloWebhookIngestion fetches one category and stores only matching feed
   }
 });
 
+test('runFoloWebhookIngestion uses default DB upsert path when upsertItems is not overridden', async () => {
+  const env = createEnv();
+
+  __setFoloWebhookDependencies({
+    fetchDataByCategory: async () => ({
+      data: [
+        createUnifiedItem(),
+      ],
+      errors: [],
+    }),
+  });
+
+  try {
+    const result = await runFoloWebhookIngestion(env, {
+      entry: { feedId: 'feed-openai' },
+    });
+
+    assert.equal(result.status, 200);
+    assert.equal(result.success, true);
+    assert.equal(result.upsertedCount, 1);
+    assert.equal(env.DB.state.batches.length, 1);
+  } finally {
+    __resetFoloWebhookDependencies();
+  }
+});
+
 test('runFoloWebhookIngestion returns 202 when category fetch succeeds but target feed yields no rows', async () => {
   const env = createEnv();
 
