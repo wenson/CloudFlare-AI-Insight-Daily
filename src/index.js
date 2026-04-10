@@ -28,8 +28,6 @@ function getRequiredEnvVars(env) {
         'FOLO_COOKIE_KV_KEY',
         'FOLO_DATA_API',
         'FOLO_FILTER_DAYS',
-        'FOLO_WEBHOOK_TOKEN',
-        'FOLO_WEBHOOK_FEED_MAP',
     ];
 
     if ((env.USE_MODEL_PLATFORM || '').startsWith('OPEN')) {

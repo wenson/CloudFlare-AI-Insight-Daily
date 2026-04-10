@@ -24,9 +24,21 @@ export async function handleFoloWebhook(request, env) {
     );
   }
 
+  const configuredToken = typeof env?.FOLO_WEBHOOK_TOKEN === 'string' ? env.FOLO_WEBHOOK_TOKEN.trim() : '';
+  if (!configuredToken) {
+    return Response.json(
+      {
+        success: false,
+        message: 'FOLO webhook is not configured.',
+        errors: ['Missing FOLO_WEBHOOK_TOKEN configuration.'],
+      },
+      { status: 503, headers: JSON_HEADERS },
+    );
+  }
+
   const url = new URL(request.url);
   const token = url.searchParams.get('token');
-  if (!token || token !== env.FOLO_WEBHOOK_TOKEN) {
+  if (!token || token !== configuredToken) {
     return Response.json(
       {
         success: false,
@@ -51,7 +63,21 @@ export async function handleFoloWebhook(request, env) {
     );
   }
 
-  const result = await runWebhookIngestion(env, payload);
+  let result;
+  try {
+    result = await runWebhookIngestion(env, payload);
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    result = {
+      status: 500,
+      success: false,
+      accepted: true,
+      matched: false,
+      message: 'Webhook ingestion failed unexpectedly.',
+      errors: [errorMessage || 'Unknown ingestion error.'],
+    };
+  }
+
   const status = Number.isInteger(result?.status) ? result.status : 500;
   const logPayload = {
     event: 'folo-webhook-ingestion',
@@ -64,7 +90,6 @@ export async function handleFoloWebhook(request, env) {
     upsertedCount: Number.isInteger(result?.upsertedCount) ? result.upsertedCount : 0,
     errors: Array.isArray(result?.errors) ? result.errors : [],
   };
-
   if (status >= 500) {
     console.error(JSON.stringify(logPayload));
   } else {

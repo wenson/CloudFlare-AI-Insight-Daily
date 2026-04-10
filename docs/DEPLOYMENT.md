@@ -103,6 +103,7 @@ npx wrangler secret put OPENAI_API_KEY
 
 - `FOLO_COOKIE`：Cloudflare 定时任务和 `/backfillData` 补数接口都会读取这个密文 Cookie，而不是从浏览器 localStorage 里拿。上传 Cookie 后，调度/补数执行时只在 Worker 内部使用它访问 Folo，手动 `/writeData` 依然通过浏览器端存储迁移 Cookie。
 - `FOLO_WEBHOOK_TOKEN`：建议作为 secret 配置，用于公开 `/webhooks/folo` 的 URL token 鉴权。
+- 由于 webhook 使用 query token（`/webhooks/folo?token=...`），该 URL 可能进入访问日志、代理日志或浏览器历史，请把 `FOLO_WEBHOOK_TOKEN` 当作密钥处理并定期轮换。
 
 `FOLO_WEBHOOK_FEED_MAP` 示例（放在 `[vars]`，需序列化为单行 JSON 字符串）：
 

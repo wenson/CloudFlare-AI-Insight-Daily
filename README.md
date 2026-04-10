@@ -159,6 +159,9 @@
 
 配置后，`POST /webhooks/folo` 会按映射定位目标源并把匹配结果写入 D1 `source_items`。
 
+> [!WARNING]
+> webhook 使用 URL 查询参数 `token` 进行鉴权，完整 URL 可能出现在浏览器历史、代理日志或监控日志中。请将 `FOLO_WEBHOOK_TOKEN` 视为密钥管理并定期轮换。
+
 ---
 
 ## 📚 更多文档

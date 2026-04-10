@@ -92,6 +92,58 @@ test('worker serves POST /webhooks/folo without login redirect when token is val
   }
 });
 
+test('worker rejects non-POST webhook requests with 405', async () => {
+  const response = await worker.fetch(
+    new Request('https://example.com/webhooks/folo?token=webhook-secret', {
+      method: 'GET',
+    }),
+    createEnv(),
+  );
+
+  assert.equal(response.status, 405);
+  const body = await response.json();
+  assert.equal(body.success, false);
+});
+
+test('worker returns 503 when webhook token config is missing', async () => {
+  const response = await worker.fetch(
+    new Request('https://example.com/webhooks/folo?token=webhook-secret', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ entry: { feedId: 'feed-1' } }),
+    }),
+    createEnv({ FOLO_WEBHOOK_TOKEN: '' }),
+  );
+
+  assert.equal(response.status, 503);
+  const body = await response.json();
+  assert.equal(body.success, false);
+});
+
+test('worker rejects webhook requests with missing token before hitting ingestion service', async () => {
+  let called = false;
+  __setRunFoloWebhookIngestion(async () => {
+    called = true;
+    return { status: 200 };
+  });
+
+  try {
+    const response = await worker.fetch(
+      new Request('https://example.com/webhooks/folo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ entry: { feedId: 'feed-1' } }),
+      }),
+      createEnv(),
+    );
+
+    assert.equal(response.status, 401);
+    assert.equal(called, false);
+  } finally {
+    __resetRunFoloWebhookIngestion();
+  }
+});
+
 test('worker rejects webhook requests with wrong token before hitting ingestion service', async () => {
   let called = false;
   __setRunFoloWebhookIngestion(async () => {
@@ -111,6 +163,30 @@ test('worker rejects webhook requests with wrong token before hitting ingestion 
 
     assert.equal(response.status, 401);
     assert.equal(called, false);
+  } finally {
+    __resetRunFoloWebhookIngestion();
+  }
+});
+
+test('worker returns structured 500 when ingestion throws unexpectedly', async () => {
+  __setRunFoloWebhookIngestion(async () => {
+    throw new Error('ingestion exploded');
+  });
+
+  try {
+    const response = await worker.fetch(
+      new Request('https://example.com/webhooks/folo?token=webhook-secret', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ entry: { feedId: 'feed-1' } }),
+      }),
+      createEnv(),
+    );
+
+    assert.equal(response.status, 500);
+    const body = await response.json();
+    assert.equal(body.success, false);
+    assert.equal(Array.isArray(body.errors), true);
   } finally {
     __resetRunFoloWebhookIngestion();
   }
