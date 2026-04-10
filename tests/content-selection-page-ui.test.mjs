@@ -145,13 +145,25 @@ test('content selection page ships interaction controller hooks with non-blockin
   assert.match(html, /data-close-cookie-panel/);
   assert.match(html, /data-save-cookie/);
   assert.match(html, /data-fetch-all/);
+  assert.match(html, /data-toggle-advanced-actions/);
+  assert.match(html, /data-advanced-actions-panel/);
+  assert.match(html, /aria-expanded="false"/);
   assert.match(html, /data-clear-selection/);
   assert.match(html, /data-mobile-summary/);
   assert.match(html, /data-selected-count/);
+  assert.match(html, /data-selection-summary-stats/);
   assert.match(html, /data-selection-summary-list/);
   assert.match(html, /data-sidebar-status/);
+  assert.match(html, /selectedEntries\.slice\(0, 6\)/);
+  assert.match(html, /const advancedActionsPanel = root\.querySelector\('\[data-advanced-actions-panel\]'\);/);
+  assert.match(html, /const advancedActionsToggle = root\.querySelector\('\[data-toggle-advanced-actions\]'\);/);
+  assert.match(html, /const summaryStats = root\.querySelector\('\[data-selection-summary-stats\]'\);/);
+  assert.match(html, /function setAdvancedActionsOpen\(nextOpen\)/);
+  assert.match(html, /advancedActionsToggle\.setAttribute\('aria-expanded', nextOpen \? 'true' : 'false'\);/);
+  assert.match(html, /const advancedToggle = event\.target\.closest\('\[data-toggle-advanced-actions\]'\);/);
   assert.doesNotMatch(html, /alert\(/);
   assert.doesNotMatch(html, /confirm\(/);
+  assert.doesNotMatch(html, /<section class="cookie-panel card" data-cookie-panel hidden>\s*<\/section>/);
 });
 
 test('content selection page keeps summary sidebar usable on mobile and CTA scrolls to it', () => {

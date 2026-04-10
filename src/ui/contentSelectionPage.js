@@ -362,7 +362,10 @@ export function generateContentSelectionPageHtml(env, dateStr, allData, dataCate
     (() => {
       const root = document;
       const toastRegion = root.querySelector('.app-toast-region');
+      const advancedActionsPanel = root.querySelector('[data-advanced-actions-panel]');
+      const advancedActionsToggle = root.querySelector('[data-toggle-advanced-actions]');
       const summaryList = root.querySelector('[data-selection-summary-list]');
+      const summaryStats = root.querySelector('[data-selection-summary-stats]');
       const sidebarStatus = root.querySelector('[data-sidebar-status]');
       const selectionSidebar = root.querySelector('.selection-sidebar');
       const selectedCountNodes = root.querySelectorAll('[data-selected-count]');
@@ -396,6 +399,13 @@ export function generateContentSelectionPageHtml(env, dateStr, allData, dataCate
         toast.textContent = message;
         toastRegion.appendChild(toast);
         window.setTimeout(() => toast.remove(), 2400);
+      }
+
+      function setAdvancedActionsOpen(nextOpen) {
+        if (!advancedActionsPanel || !advancedActionsToggle) return;
+        advancedActionsPanel.hidden = !nextOpen;
+        advancedActionsToggle.setAttribute('aria-expanded', nextOpen ? 'true' : 'false');
+        advancedActionsToggle.textContent = nextOpen ? '收起高级操作' : '高级操作';
       }
 
       function readSelectedItemsMap() {
@@ -494,6 +504,15 @@ export function generateContentSelectionPageHtml(env, dateStr, allData, dataCate
           || '未命名内容';
       }
 
+      function summarizeSelectedTypes(entries) {
+        const counts = { news: 0, paper: 0, socialMedia: 0 };
+        entries.forEach(([value]) => {
+          const type = String(value).split(':')[0];
+          if (counts[type] != null) counts[type] += 1;
+        });
+        return '新闻 ' + counts.news + ' / 论文 ' + counts.paper + ' / 社媒 ' + counts.socialMedia;
+      }
+
       function syncHiddenInputs() {
         if (!hiddenInputsContainer) return;
         hiddenInputsContainer.replaceChildren();
@@ -507,7 +526,7 @@ export function generateContentSelectionPageHtml(env, dateStr, allData, dataCate
       }
 
       function updateSummary() {
-        if (!summaryList || !sidebarStatus) return;
+        if (!sidebarStatus) return;
 
         const selectedEntries = Object.entries(selectedItemsMap);
         const selectedCount = selectedEntries.length;
@@ -520,6 +539,16 @@ export function generateContentSelectionPageHtml(env, dateStr, allData, dataCate
           mobileSummaryButton.textContent = '已选 ' + selectedCount + ' 条';
         }
 
+        if (summaryStats) {
+          summaryStats.innerHTML = selectedCount === 0
+            ? '<div class="selection-stat-empty">尚未选择内容</div>'
+            : [
+                '<div class="selection-stat"><strong>' + selectedCount + ' 条</strong><span>总已选</span></div>',
+                '<div class="selection-stat"><strong>' + summarizeSelectedTypes(selectedEntries) + '</strong><span>分类分布</span></div>',
+              ].join('');
+        }
+
+        if (!summaryList) return;
         summaryList.replaceChildren();
 
         if (selectedCount === 0) {
@@ -918,6 +947,13 @@ export function generateContentSelectionPageHtml(env, dateStr, allData, dataCate
       });
 
       root.addEventListener('click', (event) => {
+        const advancedToggle = event.target.closest('[data-toggle-advanced-actions]');
+        if (advancedToggle) {
+          const nextOpen = advancedActionsPanel?.hidden ?? true;
+          setAdvancedActionsOpen(nextOpen);
+          return;
+        }
+
         const batchButton = event.target.closest('[data-batch-size-option]');
         if (batchButton) {
           const nextPageSize = Number(batchButton.dataset.batchSizeOption);
@@ -951,6 +987,7 @@ export function generateContentSelectionPageHtml(env, dateStr, allData, dataCate
       });
 
       root.querySelector('[data-open-cookie-panel]')?.addEventListener('click', () => {
+        setAdvancedActionsOpen(true);
         if (cookiePanel) cookiePanel.hidden = false;
       });
       root.querySelector('[data-close-cookie-panel]')?.addEventListener('click', () => {
@@ -1000,6 +1037,7 @@ export function generateContentSelectionPageHtml(env, dateStr, allData, dataCate
         cookieInput.value = savedCookie;
       }
 
+      setAdvancedActionsOpen(false);
       updateBatchSizeButtons();
       Object.keys(categoryItems).forEach((categoryId) => renderCategoryStatus(categoryId));
       activateCategory(initialActiveCategory);
