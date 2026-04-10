@@ -249,3 +249,19 @@ test('content selection page renders batch-size controls and incremental loading
   assert.match(html, /input\.name = 'selectedItems';/);
   assert.match(html, /selectedItemsMap/);
 });
+
+test('content selection page renders the backfill control set', () => {
+  const html = generateContentSelectionPageHtml(
+    createEnv(),
+    '2026-04-08',
+    createData(),
+    createCategories(),
+  );
+
+  assert.match(html, /data-backfill-panel/);
+  assert.match(html, /id="backfillStartDate"/);
+  assert.match(html, /id="backfillEndDate"/);
+  assert.match(html, /data-run-backfill/);
+  assert.match(html, /fetch\('\/backfillData'/);
+  assert.match(html, /<h2>Backfill<\/h2>/);
+});

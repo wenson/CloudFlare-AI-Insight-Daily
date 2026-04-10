@@ -255,6 +255,27 @@ export function generateContentSelectionPageHtml(env, dateStr, allData, dataCate
           </div>
         </header>
 
+        <section class="backfill-panel card" data-backfill-panel>
+          <div class="backfill-panel-header">
+            <h2>Backfill</h2>
+            <p>从服务端补齐指定日期的源数据，无需浏览器 Cookie。</p>
+          </div>
+          <div class="backfill-panel-fields">
+            <label>
+              <span>开始日期</span>
+              <input id="backfillStartDate" type="date" value="${safeDateStr}">
+            </label>
+            <label>
+              <span>结束日期</span>
+              <input id="backfillEndDate" type="date" value="${safeDateStr}">
+            </label>
+          </div>
+          <div class="backfill-panel-actions">
+            <button type="button" class="button button-secondary" data-run-backfill>Backfill</button>
+          </div>
+          <p class="backfill-panel-result" data-backfill-result aria-live="polite"></p>
+        </section>
+
         <section class="workspace-toolbar card">
           <div class="workspace-toolbar-left">
             ${categoryNav}
@@ -779,6 +800,72 @@ export function generateContentSelectionPageHtml(env, dateStr, allData, dataCate
         }
       }
 
+      const backfillButton = root.querySelector('[data-run-backfill]');
+      const backfillResultNode = root.querySelector('[data-backfill-result]');
+      const backfillStartInput = root.querySelector('#backfillStartDate');
+      const backfillEndInput = root.querySelector('#backfillEndDate');
+
+      async function executeBackfill() {
+        if (!backfillButton) return;
+
+        const startValue = backfillStartInput?.value?.trim();
+        const endValue = backfillEndInput?.value?.trim();
+        if (!startValue || !endValue) {
+          showToast('请填写起始与结束日期', 'error');
+          return;
+        }
+
+        const originalText = backfillButton.textContent;
+        backfillButton.disabled = true;
+        backfillButton.dataset.loading = 'true';
+        backfillButton.textContent = '补数中...';
+        if (backfillResultNode) {
+          backfillResultNode.textContent = '请求中...';
+        }
+
+        try {
+          const response = await fetch('/backfillData', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ startDate: startValue, endDate: endValue }),
+          });
+          const payload = await response.json().catch(() => ({}));
+          const summary = payload?.summary || {};
+          const summaryText =
+            '补数完成：' +
+            (summary.successDays ?? 0) +
+            ' 天成功，' +
+            (summary.partialFailureDays ?? 0) +
+            ' 天部分失败，' +
+            (summary.failedDays ?? 0) +
+            ' 天失败';
+
+          if (!response.ok || payload.success !== true) {
+            const message = payload.message || '补数遇到问题';
+            showToast(message, 'error');
+            if (backfillResultNode) {
+              backfillResultNode.textContent = summaryText;
+            }
+            return;
+          }
+
+          showToast('补数请求完成');
+          if (backfillResultNode) {
+            backfillResultNode.textContent = summaryText;
+          }
+        } catch (error) {
+          const message = error?.message || '补数请求失败';
+          showToast(message, 'error');
+          if (backfillResultNode) {
+            backfillResultNode.textContent = '补数失败：' + message;
+          }
+        } finally {
+          backfillButton.disabled = false;
+          backfillButton.dataset.loading = 'false';
+          backfillButton.textContent = originalText;
+        }
+      }
+
       form?.addEventListener('submit', (event) => {
         if (Object.keys(selectedItemsMap).length === 0) {
           event.preventDefault();
@@ -838,6 +925,10 @@ export function generateContentSelectionPageHtml(env, dateStr, allData, dataCate
       root.querySelector('[data-save-cookie]')?.addEventListener('click', saveCookie);
       root.querySelector('[data-fetch-all]')?.addEventListener('click', (event) => {
         fetchLatest(event.currentTarget);
+      });
+      backfillButton?.addEventListener('click', (event) => {
+        event.preventDefault();
+        void executeBackfill();
       });
       root.querySelector('[data-clear-selection]')?.addEventListener('click', () => {
         selectedItemsMap = {};
