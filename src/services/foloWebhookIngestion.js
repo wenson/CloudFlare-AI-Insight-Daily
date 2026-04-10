@@ -69,79 +69,103 @@ export function __resetFoloWebhookDependencies() {
 }
 
 export async function runFoloWebhookIngestion(env, payload = {}) {
-  const identity = extractWebhookFeedIdentity(payload);
-  if (!identity || !hasAnyFeedIdentity(identity)) {
-    return {
-      status: 400,
-      success: false,
-      accepted: false,
-      matched: false,
-      message: 'Webhook payload must include at least one feed identity field: feedId, feedUrl, or siteUrl.',
-      errors: ['Missing required feed identity fields.'],
-    };
-  }
+  let accepted = false;
+  let matched = false;
+  let category = '';
+  let sourceKey = '';
 
-  const registry = getFoloWebhookFeedRegistry(env);
-  const match = matchFoloWebhookFeed(registry, identity);
+  try {
+    const identity = extractWebhookFeedIdentity(payload);
+    if (!identity || !hasAnyFeedIdentity(identity)) {
+      return {
+        status: 400,
+        success: false,
+        accepted: false,
+        matched: false,
+        message: 'Webhook payload must include at least one feed identity field: feedId, feedUrl, or siteUrl.',
+        errors: ['Missing required feed identity fields.'],
+      };
+    }
 
-  if (!match) {
+    accepted = true;
+    const registry = getFoloWebhookFeedRegistry(env);
+    const match = matchFoloWebhookFeed(registry, identity);
+
+    if (!match) {
+      return {
+        status: 202,
+        success: true,
+        accepted: true,
+        matched: false,
+        matchKey: identity.matchKey,
+        matchValue: identity.matchValue,
+        message: 'Webhook accepted but no configured feed matched this event.',
+        errors: [],
+      };
+    }
+
+    matched = true;
+    category = match.sourceType;
+    sourceKey = match.sourceKey;
+
+    const fetchResult = await fetchCategoryData(env, match.sourceType, env?.FOLO_COOKIE);
+    const fetchErrors = Array.isArray(fetchResult?.errors) ? fetchResult.errors : [];
+    if (fetchErrors.length > 0) {
+      return {
+        status: 502,
+        success: false,
+        accepted: true,
+        matched: true,
+        category: match.sourceType,
+        sourceKey: match.sourceKey,
+        message: 'Webhook matched a configured feed, but upstream category ingestion failed.',
+        errors: fetchErrors,
+      };
+    }
+
+    const items = Array.isArray(fetchResult?.data) ? fetchResult.data : [];
+    const matchedItems = items.filter((item) => matchesTargetFeed(item, identity));
+
+    if (matchedItems.length === 0) {
+      return {
+        status: 202,
+        success: true,
+        accepted: true,
+        matched: true,
+        category: match.sourceType,
+        sourceKey: match.sourceKey,
+        upsertedCount: 0,
+        message: 'Webhook accepted but no source items matched the target feed.',
+        errors: [],
+      };
+    }
+
+    const fetchDate = new Date().toISOString().slice(0, 10);
+    const records = matchedItems.map((item) => buildSourceItemRecord(item, fetchDate));
+    await upsertItems(env.DB, records);
+
     return {
-      status: 202,
+      status: 200,
       success: true,
-      accepted: true,
-      matched: false,
-      matchKey: identity.matchKey,
-      matchValue: identity.matchValue,
-      message: 'Webhook accepted but no configured feed matched this event.',
-      errors: [],
-    };
-  }
-
-  const fetchResult = await fetchCategoryData(env, match.sourceType, env?.FOLO_COOKIE);
-  const fetchErrors = Array.isArray(fetchResult?.errors) ? fetchResult.errors : [];
-  if (fetchErrors.length > 0) {
-    return {
-      status: 502,
-      success: false,
       accepted: true,
       matched: true,
       category: match.sourceType,
       sourceKey: match.sourceKey,
-      message: 'Webhook matched a configured feed, but upstream category ingestion failed.',
-      errors: fetchErrors,
-    };
-  }
-
-  const items = Array.isArray(fetchResult?.data) ? fetchResult.data : [];
-  const matchedItems = items.filter((item) => matchesTargetFeed(item, identity));
-
-  if (matchedItems.length === 0) {
-    return {
-      status: 202,
-      success: true,
-      accepted: true,
-      matched: true,
-      category: match.sourceType,
-      sourceKey: match.sourceKey,
-      upsertedCount: 0,
-      message: 'Webhook accepted but no source items matched the target feed.',
+      upsertedCount: records.length,
+      message: 'Webhook source items fetched and stored.',
       errors: [],
     };
+  } catch (error) {
+    const details = typeof error?.message === 'string' && error.message ? error.message : 'Unknown ingestion error.';
+    return {
+      status: 500,
+      success: false,
+      accepted,
+      matched,
+      category: matched ? category : undefined,
+      sourceKey: matched ? sourceKey : undefined,
+      message: 'Webhook ingestion failed unexpectedly.',
+      errors: [details],
+    };
   }
-
-  const fetchDate = new Date().toISOString().slice(0, 10);
-  const records = matchedItems.map((item) => buildSourceItemRecord(item, fetchDate));
-  await upsertItems(env.DB, records);
-
-  return {
-    status: 200,
-    success: true,
-    accepted: true,
-    matched: true,
-    category: match.sourceType,
-    sourceKey: match.sourceKey,
-    upsertedCount: records.length,
-    message: 'Webhook source items fetched and stored.',
-    errors: [],
-  };
 }

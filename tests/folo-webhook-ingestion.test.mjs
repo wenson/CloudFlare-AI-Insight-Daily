@@ -89,6 +89,22 @@ test('runFoloWebhookIngestion returns 202 when no configured feed matches', asyn
   assert.equal(env.DB.state.batches.length, 0);
 });
 
+test('runFoloWebhookIngestion returns 400 when payload has no usable feed identity', async () => {
+  const env = createEnv();
+
+  const result = await runFoloWebhookIngestion(env, {
+    entry: {},
+    feed: {},
+  });
+
+  assert.equal(result.status, 400);
+  assert.equal(result.success, false);
+  assert.equal(result.accepted, false);
+  assert.equal(result.matched, false);
+  assert.match(result.message, /feed identity/i);
+  assert.equal(env.DB.state.batches.length, 0);
+});
+
 test('runFoloWebhookIngestion fetches one category and stores only matching feed items', async () => {
   const env = createEnv();
   const calls = [];
@@ -128,6 +144,8 @@ test('runFoloWebhookIngestion fetches one category and stores only matching feed
     assert.equal(result.upsertedCount, 1);
     assert.deepEqual(calls, [{ category: 'news', foloCookie: 'secret-cookie' }]);
     assert.equal(env.DB.state.batches.length, 1);
+    assert.equal(env.DB.state.batches[0].length, 1);
+    assert.equal(env.DB.state.batches[0][0].args[2], 'item-1');
   } finally {
     __resetFoloWebhookDependencies();
   }
@@ -160,6 +178,32 @@ test('runFoloWebhookIngestion returns 202 when category fetch succeeds but targe
     assert.equal(result.status, 202);
     assert.equal(result.matched, true);
     assert.equal(result.upsertedCount, 0);
+  } finally {
+    __resetFoloWebhookDependencies();
+  }
+});
+
+test('runFoloWebhookIngestion returns structured 500 when category dependency throws', async () => {
+  const env = createEnv();
+
+  __setFoloWebhookDependencies({
+    fetchCategoryData: async () => {
+      throw new Error('network down');
+    },
+  });
+
+  try {
+    const result = await runFoloWebhookIngestion(env, {
+      entry: { feedId: 'feed-openai' },
+    });
+
+    assert.equal(result.status, 500);
+    assert.equal(result.success, false);
+    assert.equal(result.accepted, true);
+    assert.equal(result.matched, true);
+    assert.match(result.message, /unexpectedly/i);
+    assert.match(result.errors.join('\n'), /network down/);
+    assert.equal(env.DB.state.batches.length, 0);
   } finally {
     __resetFoloWebhookDependencies();
   }
