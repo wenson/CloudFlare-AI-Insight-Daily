@@ -70,6 +70,7 @@ export async function handleGetContentHtml(request, env, dataCategories) {
       totalItems,
       categoryState,
       archiveDays,
+      todayDate: getISODate(),
     });
 
     return new Response(html, { headers: { 'Content-Type': 'text/html; charset=utf-8' } });

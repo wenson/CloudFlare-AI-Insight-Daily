@@ -149,20 +149,41 @@ function renderCategoryPanel(category, items, isActive, typeRenderers, categoryS
     </section>`;
 }
 
-function renderArchiveLinks(archiveDays = []) {
-  if (!archiveDays.length) {
+function renderArchiveLinks(archiveDays = [], todayDate = '') {
+  const normalizedRows = Array.isArray(archiveDays) ? [...archiveDays] : [];
+  const hasToday = todayDate
+    ? normalizedRows.some((row) => row.archive_date === todayDate)
+    : false;
+
+  if (todayDate && !hasToday) {
+    normalizedRows.unshift({
+      archive_date: todayDate,
+      total_count: 0,
+      is_today_entry: true,
+    });
+  }
+
+  if (!normalizedRows.length) {
     return '<p class="selection-empty">暂无历史归档内容。</p>';
   }
 
-  return archiveDays.map((row) => {
+  return normalizedRows.map((row) => {
     const archiveDate = row.archive_date || '';
+    const isTodayEntry = row.is_today_entry === true || archiveDate === todayDate;
+    const primaryText = isTodayEntry
+      ? '今天'
+      : escapeHtml(formatDateToChinese(archiveDate));
+    const secondaryText = isTodayEntry
+      ? escapeHtml(formatDateToChinese(archiveDate))
+      : `${Number(row.total_count) || 0} 条`;
+
     return `
       <a
         href="/getContentHtml?date=${encodeURIComponent(archiveDate)}&category=news&pageSize=20"
         class="archive-sidebar-link"
       >
-        <span>${escapeHtml(formatDateToChinese(archiveDate))}</span>
-        <span class="archive-sidebar-count">${Number(row.total_count) || 0} 条</span>
+        <span>${primaryText}</span>
+        <span class="archive-sidebar-count">${secondaryText}</span>
       </a>`;
   }).join('');
 }
@@ -178,7 +199,7 @@ export function generateContentSelectionPageHtml(env, dateStr, allData, dataCate
   const initialPageSize = Number(pageState.pageSize) || DEFAULT_CONTENT_BATCH_SIZE;
   const safeDateStr = escapeHtml(dateStr);
   const safeDisplayDate = escapeHtml(formatDateToChinese(dateStr));
-  const archiveLinksHtml = renderArchiveLinks(pageState.archiveDays || []);
+  const archiveLinksHtml = renderArchiveLinks(pageState.archiveDays || [], pageState.todayDate || '');
   const categoryState = {};
   const initialCategoryItems = {};
   const totalItems = Number.isFinite(Number(pageState.totalItems))

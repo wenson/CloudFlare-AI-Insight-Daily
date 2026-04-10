@@ -45,6 +45,7 @@ test('content selection page renders the dashboard shell and explicit summary re
     createData(),
     createCategories(),
     {
+      todayDate: '2026-04-10',
       archiveDays: [
         {
           archive_date: '2026-04-07',
@@ -75,6 +76,8 @@ test('content selection page renders the dashboard shell and explicit summary re
   assert.match(html, /data-selection-archive/);
   assert.match(html, /selection-summary-card[\s\S]*data-selection-summary-list[\s\S]*selection-sidebar-footer/);
   assert.match(html, /selection-archive-card[\s\S]*data-selection-archive/);
+  assert.match(html, /今天/);
+  assert.match(html, /href="\/getContentHtml\?date=2026-04-10&category=news&pageSize=20"/);
   assert.match(html, /2026\/4\/7/);
   assert.match(html, /2026\/4\/6/);
   assert.match(html, /href="\/getContentHtml\?date=2026-04-07&category=news&pageSize=20"/);
@@ -188,6 +191,7 @@ test('content selection page renders batch-size controls and incremental loading
     {
       activeCategory: 'news',
       pageSize: 20,
+      todayDate: '2026-04-10',
       archiveDays: [
         {
           archive_date: '2026-04-07',
