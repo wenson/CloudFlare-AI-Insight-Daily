@@ -156,7 +156,8 @@ export async function runFoloWebhookIngestion(env, payload = {}) {
       errors: [],
     };
   } catch (error) {
-    const details = typeof error?.message === 'string' && error.message ? error.message : 'Unknown ingestion error.';
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const details = errorMessage || 'Unknown ingestion error.';
     return {
       status: 500,
       success: false,

@@ -108,6 +108,7 @@ test('runFoloWebhookIngestion returns 400 when payload has no usable feed identi
 test('runFoloWebhookIngestion fetches one category and stores only matching feed items', async () => {
   const env = createEnv();
   const calls = [];
+  let persistedRecords = [];
 
   __setFoloWebhookDependencies({
     fetchDataByCategory: async (_env, category, foloCookie) => {
@@ -128,6 +129,10 @@ test('runFoloWebhookIngestion fetches one category and stores only matching feed
         errors: [],
       };
     },
+    upsertItems: async (_db, records) => {
+      persistedRecords = records;
+      return records.map(() => ({ success: true }));
+    },
   });
 
   try {
@@ -143,9 +148,10 @@ test('runFoloWebhookIngestion fetches one category and stores only matching feed
     assert.equal(result.sourceKey, 'news-openai-blog');
     assert.equal(result.upsertedCount, 1);
     assert.deepEqual(calls, [{ category: 'news', foloCookie: 'secret-cookie' }]);
-    assert.equal(env.DB.state.batches.length, 1);
-    assert.equal(env.DB.state.batches[0].length, 1);
-    assert.equal(env.DB.state.batches[0][0].args[2], 'item-1');
+    assert.equal(env.DB.state.batches.length, 0);
+    assert.equal(persistedRecords.length, 1);
+    assert.equal(persistedRecords[0].source_item_id, 'item-1');
+    assert.equal(persistedRecords[0].url, 'https://openai.com/blog/item-1');
   } finally {
     __resetFoloWebhookDependencies();
   }
