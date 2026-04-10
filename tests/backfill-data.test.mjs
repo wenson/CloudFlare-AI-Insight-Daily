@@ -196,6 +196,7 @@ test('handleBackfillData keeps summary buckets distinct for partial success', as
     assert.equal(body.summary.partialFailureDays, 1);
     assert.equal(body.summary.failedDays, 1);
     assert.equal(body.summary.totalDays, 3);
+    assert.equal(body.success, false);
   } finally {
     __resetBackfillRunSourceItemIngestion();
   }

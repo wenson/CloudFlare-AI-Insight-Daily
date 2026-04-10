@@ -264,9 +264,10 @@ test('content selection page renders the backfill control set', () => {
   assert.match(html, /data-run-backfill/);
   assert.match(html, /fetch\('\/backfillData'/);
   assert.match(html, /<h2>Backfill<\/h2>/);
-  assert.match(html, /showToast\(summaryText\)/);
+  assert.match(html, /hasBackfillIssues/);
+  assert.match(html, /showToast\(summaryText, hasBackfillIssues \? 'error' : 'info'\)/);
   assert.match(html, /if \(!response\.ok\)/);
-  assert.doesNotMatch(html, /payload\.success/);
+  assert.match(html, /payload\?\.success !== true/);
   assert.match(html, /try \{[\s\S]*await response\.json\(\);/);
   assert.match(html, /catch \(error\)/);
   assert.match(html, /补数响应格式异常/);
