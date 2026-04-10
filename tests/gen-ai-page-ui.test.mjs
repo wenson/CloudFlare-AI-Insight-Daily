@@ -33,14 +33,17 @@ test('gen ai page renders reader and action rail layout', () => {
 
   assert.match(html, /report-layout/);
   assert.match(html, /report-page-hero/);
+  assert.match(html, /report-hero-metadata/);
   assert.match(html, /report-reader/);
   assert.match(html, /report-reader-shell/);
+  assert.match(html, /report-reader-rendered/);
   assert.match(html, /report-actions/);
   assert.match(html, /report-sidebar-section/);
   assert.match(html, /analysis-panel/);
   assert.match(html, /prompt-panel/);
   assert.match(html, /data-open-preview/);
   assert.match(html, /data-run-analysis/);
+  assert.match(html, /data-toggle-prompt/);
   assert.match(html, /app-toast-region/);
   assert.doesNotMatch(html, /alert\(/);
 });

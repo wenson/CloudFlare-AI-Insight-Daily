@@ -77,7 +77,7 @@ function renderPromptPanel(title, systemPrompt, userPrompt, promptId) {
   }
 
   return `
-    <section class="prompt-panel card">
+    <section class="prompt-panel report-sidebar-section card">
       <div class="prompt-panel-header">
         <h3>${escapeMarkup(title)}</h3>
         <button
@@ -152,7 +152,7 @@ function renderActionRail({
   }
 
   return `
-    <section class="report-rail card">
+    <section class="report-rail report-sidebar-section card">
       <h2>操作台</h2>
       <p class="report-action-note">页面内操作都通过非阻塞提示反馈当前状态，不会打断阅读流程。</p>
       <div class="report-action-list">
@@ -186,7 +186,7 @@ function renderAnalysisPanel(title, isErrorPage) {
   }
 
   return `
-    <section class="analysis-panel card">
+    <section class="analysis-panel report-sidebar-section card">
       <h2>分析面板</h2>
       <p>${escapeMarkup(description)}</p>
       <pre class="analysis-panel-output" id="dailyAnalysisResult">等待新的分析结果...</pre>
@@ -235,7 +235,7 @@ export function generateGenAiPageHtml(
     : '';
   const promptArchivePanel = promptsMd
     ? `
-      <section class="prompt-panel card">
+      <section class="prompt-panel report-sidebar-section card">
         <div class="prompt-panel-header">
           <h3>调用记录</h3>
           <button
@@ -255,23 +255,25 @@ export function generateGenAiPageHtml(
 
   const bodyMarkup = `
     <main class="report-layout">
-      <header class="report-header card">
-        <div class="report-header-copy">
-          <p class="workspace-kicker">AI Insight Daily</p>
-          <h1>${safeTitle}</h1>
-          <div class="workspace-meta">
-            <span class="chip">日期 ${formattedDate}</span>
-            <span class="chip">${selectedItems.length} 条来源</span>
-            <span class="chip">${isErrorPage ? '生成失败' : '已生成'}</span>
+      <header class="report-page-hero card">
+        <div class="report-header">
+          <div class="report-header-copy">
+            <p class="workspace-kicker">AI Insight Daily</p>
+            <h1>${safeTitle}</h1>
+            <div class="workspace-meta report-hero-metadata">
+              <span class="chip">日期 ${formattedDate}</span>
+              <span class="chip">${selectedItems.length} 条来源</span>
+              <span class="chip">${isErrorPage ? '生成失败' : '已生成'}</span>
+            </div>
           </div>
-        </div>
-        <div class="report-header-actions">
-          <span class="chip">结果工作区</span>
+          <div class="report-header-actions">
+            <span class="chip">结果工作区</span>
+          </div>
         </div>
       </header>
 
       <div class="report-grid">
-        <article class="report-reader card">
+        <article class="report-reader report-reader-shell card">
           <pre class="report-reader-markdown">${escapeMarkup(safeBodyContent)}</pre>
           <div class="report-reader-rendered" data-preview-pane hidden>${renderedMarkdown}</div>
         </article>
