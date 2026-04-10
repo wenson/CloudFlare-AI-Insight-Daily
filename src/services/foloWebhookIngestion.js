@@ -51,10 +51,14 @@ export function matchesTargetFeed(item, identity = {}) {
 }
 
 export function __setFoloWebhookDependencies(overrides = {}) {
-  if (typeof overrides.fetchDataByCategory === 'function') {
+  if (typeof overrides.fetchCategoryData === 'function') {
+    fetchCategoryData = overrides.fetchCategoryData;
+  } else if (typeof overrides.fetchDataByCategory === 'function') {
     fetchCategoryData = overrides.fetchDataByCategory;
   }
-  if (typeof overrides.upsertSourceItems === 'function') {
+  if (typeof overrides.upsertItems === 'function') {
+    upsertItems = overrides.upsertItems;
+  } else if (typeof overrides.upsertSourceItems === 'function') {
     upsertItems = overrides.upsertSourceItems;
   }
 }
@@ -103,6 +107,7 @@ export async function runFoloWebhookIngestion(env, payload = {}) {
       matched: true,
       category: match.sourceType,
       sourceKey: match.sourceKey,
+      message: 'Webhook matched a configured feed, but upstream category ingestion failed.',
       errors: fetchErrors,
     };
   }
