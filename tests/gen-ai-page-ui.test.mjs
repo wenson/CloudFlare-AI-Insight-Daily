@@ -95,3 +95,24 @@ test('gen ai page keeps prompt disclosure explicit and keyboard reachable', () =
   assert.match(html, /data-open-preview/);
   assert.match(html, /data-run-analysis/);
 });
+
+test('gen ai page does not render null prompt panels when prompt inputs are absent', () => {
+  const html = generateGenAiPageHtml(
+    createEnv(),
+    'AI日报',
+    '## 今日摘要\n\n这里是正文。',
+    '2026-04-08',
+    false,
+    [],
+    null,
+    null,
+    null,
+    null,
+    null,
+    '## 今日摘要\n\n这里是正文。',
+    null,
+  );
+
+  assert.doesNotMatch(html, /<pre>null<\/pre>/);
+  assert.doesNotMatch(html, /日报提示词/);
+});

@@ -102,6 +102,14 @@ function renderPromptPanel(title, systemPrompt, userPrompt, promptId) {
     </section>`;
 }
 
+function normalizeOptionalPrompt(value) {
+  if (value == null || value === '') {
+    return null;
+  }
+
+  return convertEnglishQuotesToChinese(value);
+}
+
 function renderActionRail({
   title,
   pageDate,
@@ -220,16 +228,16 @@ export function generateGenAiPageHtml(
   const dailyPromptPanel = isDailyReportPage(title)
     ? renderPromptPanel(
         '日报提示词',
-        convertEnglishQuotesToChinese(systemP1),
-        convertEnglishQuotesToChinese(userP1),
+        normalizeOptionalPrompt(systemP1),
+        normalizeOptionalPrompt(userP1),
         'prompt-call-1',
       )
     : '';
   const podcastPromptPanel = isPodcastPage(title)
     ? renderPromptPanel(
         '播客提示词',
-        convertEnglishQuotesToChinese(systemP2),
-        convertEnglishQuotesToChinese(userP2),
+        normalizeOptionalPrompt(systemP2),
+        normalizeOptionalPrompt(userP2),
         'prompt-call-2',
       )
     : '';
