@@ -143,6 +143,42 @@ export function getDashboardStyles() {
       font-size: clamp(1.8rem, 2vw + 1rem, 2.5rem);
       line-height: 1.1;
     }
+    .workspace-status-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 20px;
+    }
+    .workspace-status-band .workspace-header-copy {
+      display: grid;
+      gap: 10px;
+      min-width: 0;
+      flex: 1 1 420px;
+    }
+    .workspace-intro {
+      margin: 0;
+      max-width: 60ch;
+      color: var(--muted);
+    }
+    .workspace-primary-actions {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      align-items: center;
+      gap: 12px;
+      flex: 0 1 auto;
+    }
+    .workspace-status-metrics {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+    }
+    .status-chip {
+      background: rgba(255, 255, 255, 0.78);
+      border-color: rgba(198, 211, 225, 0.95);
+      color: var(--text);
+    }
     .workspace-actions, .report-header-actions {
       display: flex;
       flex-wrap: wrap;
@@ -273,6 +309,68 @@ export function getDashboardStyles() {
     .analysis-panel,
     .prompt-panel,
     .cookie-panel { padding: 20px; }
+    .advanced-actions-panel {
+      display: grid;
+      gap: 18px;
+      padding: 20px;
+    }
+    .advanced-actions-header,
+    .advanced-actions-content,
+    .backfill-panel,
+    .backfill-panel-header {
+      display: grid;
+      gap: 12px;
+    }
+    .advanced-actions-header h2,
+    .backfill-panel-header h2,
+    .cookie-panel h2 {
+      margin: 0;
+    }
+    .advanced-actions-header p,
+    .backfill-panel-header p,
+    .cookie-help,
+    .backfill-panel-result {
+      margin: 0;
+      color: var(--muted);
+    }
+    .advanced-actions-content {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      align-items: start;
+    }
+    .backfill-panel {
+      padding: 20px;
+    }
+    .backfill-panel-fields {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+    .backfill-panel-fields label,
+    .cookie-field {
+      display: grid;
+      gap: 8px;
+      color: var(--text);
+      font-weight: 600;
+    }
+    .backfill-panel-fields span {
+      font-size: 14px;
+    }
+    .cookie-panel input,
+    .backfill-panel input {
+      min-height: 44px;
+      width: 100%;
+      padding: 0 12px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: var(--surface);
+      color: var(--text);
+      font: inherit;
+    }
+    .backfill-panel-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
     .report-rail {
       display: grid;
       gap: 16px;
@@ -404,6 +502,23 @@ export function getDashboardStyles() {
       .workspace-header, .report-header, .workspace-toolbar { padding: 16px; }
       .workspace-header, .report-header, .workspace-toolbar { flex-direction: column; }
       .workspace-grid, .report-grid { grid-template-columns: 1fr; }
+      .workspace-status-top {
+        flex-direction: column;
+      }
+      .workspace-primary-actions {
+        width: 100%;
+        justify-content: flex-start;
+      }
+      .workspace-primary-actions .button {
+        width: 100%;
+      }
+      .workspace-status-metrics {
+        gap: 8px;
+      }
+      .advanced-actions-content,
+      .backfill-panel-fields {
+        grid-template-columns: 1fr;
+      }
       .archive-card {
         padding: 16px;
         flex-direction: column;

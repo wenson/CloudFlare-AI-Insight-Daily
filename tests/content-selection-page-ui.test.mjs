@@ -84,8 +84,15 @@ test('content selection page renders the refreshed workbench hierarchy and expli
   assert.match(html, /workspace-aside-column/);
   assert.match(html, /selection-recent-list/);
   assert.match(html, /advanced-actions-panel/);
-  assert.doesNotMatch(html, /data-backfill-panel[\s\S]*?<form[^>]*class="workspace-form"/);
   assert.match(html, /selection-summary-card[\s\S]*selection-archive-card[\s\S]*advanced-actions-panel/);
+  const formMatch = html.match(/<form[^>]*class="workspace-form"[^>]*>[\s\S]*?<\/form>/);
+  assert.ok(formMatch);
+  assert.doesNotMatch(formMatch[0], /data-advanced-actions-panel/);
+  assert.doesNotMatch(formMatch[0], /data-backfill-panel/);
+  assert.match(html, /<\/form>\s*<section class="advanced-actions-panel workspace-aside-section card" data-advanced-actions-panel hidden>/);
+  assert.match(html, /\.workspace-status-top\s*\{/);
+  assert.match(html, /\.workspace-primary-actions\s*\{/);
+  assert.match(html, /\.workspace-status-metrics\s*\{/);
   assert.match(html, /report-reader-shell/);
   assert.match(html, /今天/);
   assert.match(html, /href="\/getContentHtml\?date=2026-04-10&category=news&pageSize=20"/);
@@ -141,7 +148,6 @@ test('content selection page ships interaction controller hooks with non-blockin
   );
 
   assert.match(html, /app-toast-region/);
-  assert.match(html, /data-open-cookie-panel/);
   assert.match(html, /data-close-cookie-panel/);
   assert.match(html, /data-save-cookie/);
   assert.match(html, /data-fetch-all/);
@@ -161,9 +167,12 @@ test('content selection page ships interaction controller hooks with non-blockin
   assert.match(html, /function setAdvancedActionsOpen\(nextOpen\)/);
   assert.match(html, /advancedActionsToggle\.setAttribute\('aria-expanded', nextOpen \? 'true' : 'false'\);/);
   assert.match(html, /const advancedToggle = event\.target\.closest\('\[data-toggle-advanced-actions\]'\);/);
+  assert.match(html, /root\.querySelector\('\[data-close-cookie-panel\]'\)\?\.addEventListener\('click', \(\) => \{\s*setAdvancedActionsOpen\(false\);/);
+  assert.doesNotMatch(html, /data-open-cookie-panel/);
+  assert.doesNotMatch(html, /cookiePanel\.hidden = true/);
   assert.doesNotMatch(html, /alert\(/);
   assert.doesNotMatch(html, /confirm\(/);
-  assert.doesNotMatch(html, /<section class="cookie-panel card" data-cookie-panel hidden>\s*<\/section>/);
+  assert.doesNotMatch(html, /<section class="cookie-panel card" data-cookie-panel hidden>/);
 });
 
 test('content selection page keeps summary sidebar usable on mobile and CTA scrolls to it', () => {
@@ -294,7 +303,7 @@ test('content selection page renders the backfill control set', () => {
   assert.doesNotMatch(html, /\.catch\(\(\) => \(\{\}\)\)/);
 });
 
-test('advanced actions panel lives inside the genAIContent form and wraps backfill controls', () => {
+test('advanced actions panel sits after the genAIContent form so backfill is not nested in submit scope', () => {
   const html = generateContentSelectionPageHtml(
     createEnv(),
     '2026-04-08',
@@ -304,7 +313,8 @@ test('advanced actions panel lives inside the genAIContent form and wraps backfi
 
   const formMatch = html.match(/<form[^>]*class="workspace-form"[^>]*>[\s\S]*?<\/form>/);
   assert.ok(formMatch);
-  assert.match(formMatch[0], /data-advanced-actions-panel/);
-  assert.match(formMatch[0], /data-cookie-panel/);
-  assert.match(formMatch[0], /data-backfill-panel/);
+  assert.doesNotMatch(formMatch[0], /data-advanced-actions-panel/);
+  assert.doesNotMatch(formMatch[0], /data-cookie-panel/);
+  assert.doesNotMatch(formMatch[0], /data-backfill-panel/);
+  assert.match(html, /<\/form>\s*<section class="advanced-actions-panel workspace-aside-section card" data-advanced-actions-panel hidden>[\s\S]*data-cookie-panel[\s\S]*data-backfill-panel/);
 });

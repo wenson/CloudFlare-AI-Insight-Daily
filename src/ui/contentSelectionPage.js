@@ -331,17 +331,6 @@ export function generateContentSelectionPageHtml(env, dateStr, allData, dataCate
           </aside>
         </div>
 
-        <section class="advanced-actions-panel workspace-aside-section card" data-advanced-actions-panel hidden>
-          <div class="advanced-actions-header">
-            <h2>高级操作</h2>
-            <p>Cookie 设置与 Backfill 默认收起，避免干扰主流程。</p>
-          </div>
-          <div class="advanced-actions-content">
-            ${cookiePanelHtml}
-            ${backfillPanelHtml}
-          </div>
-        </section>
-
         <button type="button" class="selection-summary-mobile button button-primary" data-mobile-summary>
           已选 0 条
         </button>
@@ -356,6 +345,17 @@ export function generateContentSelectionPageHtml(env, dateStr, allData, dataCate
           回到顶部
         </button>
       </form>
+
+      <section class="advanced-actions-panel workspace-aside-section card" data-advanced-actions-panel hidden>
+        <div class="advanced-actions-header">
+          <h2>高级操作</h2>
+          <p>Cookie 设置与 Backfill 默认收起，避免干扰主流程。</p>
+        </div>
+        <div class="advanced-actions-content">
+          ${cookiePanelHtml}
+          ${backfillPanelHtml}
+        </div>
+      </section>
     </main>`;
 
   const inlineScript = `
@@ -371,7 +371,6 @@ export function generateContentSelectionPageHtml(env, dateStr, allData, dataCate
       const selectedCountNodes = root.querySelectorAll('[data-selected-count]');
       const mobileSummaryButton = root.querySelector('[data-mobile-summary]');
       const backToTopButton = root.querySelector('[data-back-to-top]');
-      const cookiePanel = root.querySelector('[data-cookie-panel]');
       const cookieInput = root.querySelector('#foloCookie');
       const form = root.querySelector('.workspace-form');
       const hiddenInputsContainer = root.querySelector('[data-selection-hidden-inputs]');
@@ -797,7 +796,7 @@ export function generateContentSelectionPageHtml(env, dateStr, allData, dataCate
       }
 
       function saveCookie() {
-        if (!cookieInput || !cookiePanel) return;
+        if (!cookieInput) return;
 
         const value = cookieInput.value.trim();
         if (!value) {
@@ -808,7 +807,6 @@ export function generateContentSelectionPageHtml(env, dateStr, allData, dataCate
 
         localStorage.setItem(cookieStorageKey, value);
         showToast('Cookie 已保存');
-        cookiePanel.hidden = true;
       }
 
       async function fetchLatest(button, category = null) {
@@ -986,12 +984,8 @@ export function generateContentSelectionPageHtml(env, dateStr, allData, dataCate
         }
       });
 
-      root.querySelector('[data-open-cookie-panel]')?.addEventListener('click', () => {
-        setAdvancedActionsOpen(true);
-        if (cookiePanel) cookiePanel.hidden = false;
-      });
       root.querySelector('[data-close-cookie-panel]')?.addEventListener('click', () => {
-        if (cookiePanel) cookiePanel.hidden = true;
+        setAdvancedActionsOpen(false);
       });
       root.querySelector('[data-save-cookie]')?.addEventListener('click', saveCookie);
       root.querySelector('[data-fetch-all]')?.addEventListener('click', (event) => {
