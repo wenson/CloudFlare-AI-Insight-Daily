@@ -77,6 +77,7 @@ sequenceDiagram
 | `/getContentHtml` | `GET` | 返回内容勾选页面 | 从 D1 `source_items` 按发布时间窗口读取 |
 | `/getContent` | `GET` | 返回指定日期的 JSON 内容 | 从 D1 `source_items` 按发布时间窗口读取 |
 | `/writeData` | `POST` | 抓取外部数据源并持久化原始内容 | upsert D1 `source_items` |
+| `/backfillData` | `POST` | 认证用户可提交 `startDate`/`endDate` 补数请求，必须在 Worker 里预先设置 `FOLO_COOKIE` secret。 | 遍历日期、upsert D1 `source_items`，不写 `daily_reports` |
 
 ### 3. AI 生成路由
 
@@ -92,6 +93,12 @@ sequenceDiagram
 | 路由 | 方法 | 作用 | 主要读写 |
 | --- | --- | --- | --- |
 | `/rss` | `GET` | 输出最近 N 天的 RSS Feed | 读 D1 |
+
+### 5. Scheduled ingestion
+
+- `[triggers] crons = ["10 0 * * *"]` 会在每天 **00:10 UTC / 08:10 Asia/Shanghai** 调用 `scheduled()`。
+- 该入口读取 `env.FOLO_COOKIE` secret，在内部运行 `runSourceItemIngestion`，只 upsert D1 的 `source_items`，永远不会写入 `daily_reports`。
+- `/backfillData` 与 `scheduled()` 共用相同的 ingestion 服务，按请求日期迭代执行，两个路径都需要在 Worker 环境中设置 `FOLO_COOKIE` secret。
 
 ## 主流程拆解
 

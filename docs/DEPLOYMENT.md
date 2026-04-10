@@ -97,6 +97,8 @@ npx wrangler secret put LOGIN_PASSWORD
 npx wrangler secret put OPENAI_API_KEY
 ```
 
+- `FOLO_COOKIE`：Cloudflare 定时任务和 `/backfillData` 补数接口都会读取这个密文 Cookie，而不是从浏览器 localStorage 里拿。上传 Cookie 后，调度/补数执行时只在 Worker 内部使用它访问 Folo，手动 `/writeData` 依然通过浏览器端存储迁移 Cookie。
+
 ### 5. 本地调试
 
 ```bash
@@ -167,3 +169,9 @@ npx wrangler deploy --dry-run
 - `/genAIContent` 生成成功后会自动 upsert 当天日报到 D1 `daily_reports`
 - 同一天重新生成会覆盖正文和 RSS 摘要，不会产生重复 feed 项
 - `/rss?days=7` 默认读取最近 7 天的 D1 `daily_reports` 记录
+
+### 10. Scheduled ingestion and FOLO cookie secret
+
+Worker 已在 `[triggers]` 下设置 `crons = ["10 0 * * *"]`，也就是每天 **00:10 UTC / 08:10 Asia/Shanghai** 执行一次 `scheduled()`。该入口读取上一步配置的 `FOLO_COOKIE` 密文，运行 `runSourceItemIngestion` 来补齐当天数据，只 upsert `source_items`，不会生成或更新 `daily_reports`。如果需要补某个日期区间，可以调用 `/backfillData`，这个接口也同样依赖 `FOLO_COOKIE` secret。
+
+每次手动在浏览器里更新 FOLO Cookie（localStorage）后，请同步运行 `npx wrangler secret put FOLO_COOKIE`，确保调度与补数任务使用的 Cookie 是最新的。

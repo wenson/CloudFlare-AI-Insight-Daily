@@ -152,3 +152,10 @@ sequenceDiagram
 
 - `src/dataSources/` 目录下的文件并不会自动生效，真正启用哪些数据源由 [src/dataFetchers.js](/Volumes/c/Workspace/CloudFlare-AI-Insight-Daily/src/dataFetchers.js) 决定。
 - Worker 已不再把日报或播客写入 GitHub，且内容数据不再写入 KV。
+
+## 4. 调度与补数的数据通路
+
+- Worker 在 `[triggers]` 中定义了 `crons = ["10 0 * * *"]`，也就是每天 **00:10 UTC / 08:10 Asia/Shanghai** 触发 `scheduled()`。
+- 这个入口读取云端环境变量 `FOLO_COOKIE`（通过 `npx wrangler secret put FOLO_COOKIE` 上传），再调用 `runSourceItemIngestion` 运行当天的补数流程，唯一的输出是 D1 的 `source_items`，不会写入 `daily_reports`。
+- `/backfillData` 路径复用同一条服务，每次提交 `startDate`/`endDate` 时按日逐个调用同样的 ingestion 服务，结果仍旧只落在 `source_items`。
+- 手动 `/writeData` 仍然通过 UI 读取浏览器 localStorage 的 Folo Cookie，供公开页面使用。调度补数因为依赖密文，所以不会把 cookie 暴露给浏览器或 RSS 输出。
