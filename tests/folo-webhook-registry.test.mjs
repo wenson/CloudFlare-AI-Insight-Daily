@@ -64,6 +64,39 @@ test('getFoloWebhookFeedRegistry trims and normalizes string fields', () => {
   });
 });
 
+test('registry and payload identity coerce numeric feed ids to strings', () => {
+  const registry = getFoloWebhookFeedRegistry({
+    FOLO_WEBHOOK_FEED_MAP: JSON.stringify([
+      {
+        sourceKey: 'numeric-source',
+        sourceType: 'news',
+        feedId: 12345,
+      },
+    ]),
+  });
+
+  assert.deepEqual(registry[0], {
+    sourceKey: 'numeric-source',
+    sourceType: 'news',
+    feedId: '12345',
+    feedUrl: '',
+    siteUrl: '',
+  });
+
+  const identity = extractWebhookFeedIdentity({
+    entry: { feedId: 12345 },
+    feed: {},
+  });
+
+  assert.deepEqual(identity, {
+    matchKey: 'feedId',
+    matchValue: '12345',
+    feedId: '12345',
+    feedUrl: '',
+    siteUrl: '',
+  });
+});
+
 test('extractWebhookFeedIdentity prefers entry.feedId then feed.id then urls', () => {
   const preferred = extractWebhookFeedIdentity({
     entry: { feedId: 'entry-feed' },

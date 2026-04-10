@@ -1,5 +1,6 @@
 import { fetchDataByCategory } from '../dataFetchers.js';
 import { upsertSourceItems } from '../d1.js';
+import { getISODate } from '../helpers.js';
 import { buildSourceItemRecord } from '../sourceItems.js';
 import {
   extractWebhookFeedIdentity,
@@ -11,10 +12,10 @@ let fetchCategoryData = fetchDataByCategory;
 let upsertItems = upsertSourceItems;
 
 function normalizeOptionalString(value) {
-  if (typeof value !== 'string') {
+  if (value === null || typeof value === 'undefined') {
     return '';
   }
-  return value.trim();
+  return String(value).trim();
 }
 
 function hasAnyFeedIdentity(identity) {
@@ -141,7 +142,7 @@ export async function runFoloWebhookIngestion(env, payload = {}) {
       };
     }
 
-    const fetchDate = new Date().toISOString().slice(0, 10);
+    const fetchDate = getISODate();
     const records = matchedItems.map((item) => buildSourceItemRecord(item, fetchDate));
     await upsertItems(env.DB, records);
 

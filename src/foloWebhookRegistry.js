@@ -1,11 +1,11 @@
 const VALID_SOURCE_TYPES = new Set(['news', 'paper', 'socialMedia']);
 
 function normalizeOptionalString(value) {
-  if (typeof value !== 'string') {
+  if (value === null || typeof value === 'undefined') {
     return '';
   }
 
-  return value.trim();
+  return String(value).trim();
 }
 
 function normalizeEntry(entry) {

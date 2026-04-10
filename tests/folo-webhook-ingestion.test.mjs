@@ -178,6 +178,60 @@ test('runFoloWebhookIngestion fetches one category and stores only matching feed
   }
 });
 
+test('runFoloWebhookIngestion uses the Shanghai date for persisted source-item records', async () => {
+  const env = createEnv();
+  const OriginalDate = globalThis.Date;
+  let persistedRecords = [];
+
+  class MockDate extends OriginalDate {
+    constructor(...args) {
+      if (args.length > 0) {
+        super(...args);
+        return;
+      }
+      super('2026-04-10T16:30:00.000Z');
+    }
+
+    static now() {
+      return new OriginalDate('2026-04-10T16:30:00.000Z').getTime();
+    }
+
+    static parse(value) {
+      return OriginalDate.parse(value);
+    }
+
+    static UTC(...args) {
+      return OriginalDate.UTC(...args);
+    }
+  }
+
+  __setFoloWebhookDependencies({
+    fetchDataByCategory: async () => ({
+      data: [createUnifiedItem()],
+      errors: [],
+    }),
+    upsertItems: async (_db, records) => {
+      persistedRecords = records;
+      return records.map(() => ({ success: true }));
+    },
+  });
+  globalThis.Date = MockDate;
+
+  try {
+    const result = await runFoloWebhookIngestion(env, {
+      entry: { feedId: 'feed-openai' },
+    });
+
+    assert.equal(result.status, 200);
+    assert.equal(persistedRecords.length, 1);
+    assert.equal(persistedRecords[0].first_seen_date, '2026-04-11');
+    assert.equal(persistedRecords[0].last_seen_date, '2026-04-11');
+  } finally {
+    globalThis.Date = OriginalDate;
+    __resetFoloWebhookDependencies();
+  }
+});
+
 test('runFoloWebhookIngestion uses default DB upsert path when upsertItems is not overridden', async () => {
   const env = createEnv();
 
@@ -231,6 +285,50 @@ test('runFoloWebhookIngestion returns 202 when category fetch succeeds but targe
     assert.equal(result.status, 202);
     assert.equal(result.matched, true);
     assert.equal(result.upsertedCount, 0);
+  } finally {
+    __resetFoloWebhookDependencies();
+  }
+});
+
+test('runFoloWebhookIngestion matches numeric feed ids after normalization', async () => {
+  const env = createEnv({
+    FOLO_WEBHOOK_FEED_MAP: JSON.stringify([
+      {
+        sourceKey: 'news-openai-blog',
+        sourceType: 'news',
+        feedId: 12345,
+      },
+    ]),
+  });
+  let persistedRecords = [];
+
+  __setFoloWebhookDependencies({
+    fetchDataByCategory: async () => ({
+      data: [
+        createUnifiedItem({
+          source_meta: {
+            feed_id: 12345,
+            raw_json: { id: 'item-1' },
+          },
+        }),
+      ],
+      errors: [],
+    }),
+    upsertItems: async (_db, records) => {
+      persistedRecords = records;
+      return records.map(() => ({ success: true }));
+    },
+  });
+
+  try {
+    const result = await runFoloWebhookIngestion(env, {
+      entry: { feedId: 12345 },
+    });
+
+    assert.equal(result.status, 200);
+    assert.equal(result.upsertedCount, 1);
+    assert.equal(persistedRecords.length, 1);
+    assert.equal(persistedRecords[0].source_item_id, 'item-1');
   } finally {
     __resetFoloWebhookDependencies();
   }
