@@ -6,6 +6,16 @@ function jsonResponse(status, payload) {
   return new Response(JSON.stringify(payload), { status, headers: JSON_HEADERS });
 }
 
+let runBackfillIngestion = runSourceItemIngestion;
+
+export function __setBackfillRunSourceItemIngestion(fn) {
+  runBackfillIngestion = fn || runSourceItemIngestion;
+}
+
+export function __resetBackfillRunSourceItemIngestion() {
+  runBackfillIngestion = runSourceItemIngestion;
+}
+
 export async function handleBackfillData(request, env) {
   if (request.method !== 'POST') {
     return jsonResponse(405, {
@@ -62,7 +72,7 @@ export async function handleBackfillData(request, env) {
   for (const date of dateRange) {
     let ingestionResult;
     try {
-      ingestionResult = await runSourceItemIngestion(env, {
+      ingestionResult = await runBackfillIngestion(env, {
         date,
         mode: 'backfill',
         foloCookie: env.FOLO_COOKIE,
@@ -80,9 +90,10 @@ export async function handleBackfillData(request, env) {
     const errors = Array.isArray(ingestionResult?.errors) ? ingestionResult.errors : [];
     const success = Boolean(ingestionResult?.success);
     if (success) {
-      summary.successDays += 1;
       if (errors.length > 0) {
         summary.partialFailureDays += 1;
+      } else {
+        summary.successDays += 1;
       }
     } else {
       summary.failedDays += 1;

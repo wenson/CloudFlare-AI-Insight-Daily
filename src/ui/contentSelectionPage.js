@@ -232,8 +232,31 @@ export function generateContentSelectionPageHtml(env, dateStr, allData, dataCate
     categoryState[category.id],
   )).join('');
 
+  const backfillPanelHtml = `
+    <section class="backfill-panel card" data-backfill-panel>
+      <div class="backfill-panel-header">
+        <h2>Backfill</h2>
+        <p>从服务端补齐指定日期的源数据，无需浏览器 Cookie。</p>
+      </div>
+      <div class="backfill-panel-fields">
+        <label>
+          <span>开始日期</span>
+          <input id="backfillStartDate" type="date" value="${safeDateStr}">
+        </label>
+        <label>
+          <span>结束日期</span>
+          <input id="backfillEndDate" type="date" value="${safeDateStr}">
+        </label>
+      </div>
+      <div class="backfill-panel-actions">
+        <button type="button" class="button button-secondary" data-run-backfill>Backfill</button>
+      </div>
+      <p class="backfill-panel-result" data-backfill-result aria-live="polite"></p>
+    </section>`;
+
   const bodyContent = `
     <main class="workspace-shell">
+      ${backfillPanelHtml}
       <form class="workspace-form" action="/genAIContent" method="POST">
         <input type="hidden" name="date" value="${safeDateStr}">
         <div data-selection-hidden-inputs hidden></div>
@@ -254,27 +277,6 @@ export function generateContentSelectionPageHtml(env, dateStr, allData, dataCate
             <button type="submit" class="button button-primary">生成 AI 日报</button>
           </div>
         </header>
-
-        <section class="backfill-panel card" data-backfill-panel>
-          <div class="backfill-panel-header">
-            <h2>Backfill</h2>
-            <p>从服务端补齐指定日期的源数据，无需浏览器 Cookie。</p>
-          </div>
-          <div class="backfill-panel-fields">
-            <label>
-              <span>开始日期</span>
-              <input id="backfillStartDate" type="date" value="${safeDateStr}">
-            </label>
-            <label>
-              <span>结束日期</span>
-              <input id="backfillEndDate" type="date" value="${safeDateStr}">
-            </label>
-          </div>
-          <div class="backfill-panel-actions">
-            <button type="button" class="button button-secondary" data-run-backfill>Backfill</button>
-          </div>
-          <p class="backfill-panel-result" data-backfill-result aria-live="polite"></p>
-        </section>
 
         <section class="workspace-toolbar card">
           <div class="workspace-toolbar-left">
@@ -849,7 +851,7 @@ export function generateContentSelectionPageHtml(env, dateStr, allData, dataCate
             return;
           }
 
-          showToast('补数请求完成');
+          showToast(summaryText);
           if (backfillResultNode) {
             backfillResultNode.textContent = summaryText;
           }

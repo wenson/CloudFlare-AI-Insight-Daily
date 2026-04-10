@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import worker from '../src/index.js';
-import { handleBackfillData } from '../src/handlers/backfillData.js';
+import { handleBackfillData, __resetBackfillRunSourceItemIngestion, __setBackfillRunSourceItemIngestion } from '../src/handlers/backfillData.js';
 import { SESSION_COOKIE_NAME } from '../src/auth.js';
 
 function createKv(initialEntries = {}) {
@@ -161,6 +161,44 @@ test('handleBackfillData returns a summary per range with per-date results', asy
   assert.equal(body.results[0].date, '2026-04-08');
   assert.equal(body.results[0].success, true);
   assert.deepEqual(body.results[0].errors, []);
+});
+
+test('handleBackfillData keeps summary buckets distinct for partial success', async () => {
+  const env = createEnv({
+    FOLO_COOKIE: 'secret-cookie',
+  });
+
+  const stubResults = [
+    { success: true, errors: [], date: '2026-04-08' },
+    { success: true, errors: ['partial warning'], date: '2026-04-09' },
+    { success: false, errors: ['failed'], date: '2026-04-10' },
+  ];
+
+  let callIndex = 0;
+  __setBackfillRunSourceItemIngestion(async () => {
+    const result = stubResults[callIndex];
+    callIndex += 1;
+    return {
+      ...result,
+      counts: {},
+    };
+  });
+
+  try {
+    const response = await handleBackfillData(
+      createRequest({ startDate: '2026-04-08', endDate: '2026-04-10' }),
+      env,
+    );
+
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    assert.equal(body.summary.successDays, 1);
+    assert.equal(body.summary.partialFailureDays, 1);
+    assert.equal(body.summary.failedDays, 1);
+    assert.equal(body.summary.totalDays, 3);
+  } finally {
+    __resetBackfillRunSourceItemIngestion();
+  }
 });
 
 test('worker rejects unauthenticated POST /backfillData with login redirect', async () => {

@@ -264,4 +264,18 @@ test('content selection page renders the backfill control set', () => {
   assert.match(html, /data-run-backfill/);
   assert.match(html, /fetch\('\/backfillData'/);
   assert.match(html, /<h2>Backfill<\/h2>/);
+  assert.match(html, /showToast\(summaryText\)/);
+});
+
+test('backfill panel does not live inside the genAIContent form', () => {
+  const html = generateContentSelectionPageHtml(
+    createEnv(),
+    '2026-04-08',
+    createData(),
+    createCategories(),
+  );
+
+  const formMatch = html.match(/<form[^>]*class="workspace-form"[^>]*>[\s\S]*?<\/form>/);
+  assert.ok(formMatch);
+  assert.doesNotMatch(formMatch[0], /data-backfill-panel/);
 });
