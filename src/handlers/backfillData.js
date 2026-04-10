@@ -89,12 +89,11 @@ export async function handleBackfillData(request, env) {
 
     const errors = Array.isArray(ingestionResult?.errors) ? ingestionResult.errors : [];
     const success = Boolean(ingestionResult?.success);
-    if (success) {
-      if (errors.length > 0) {
-        summary.partialFailureDays += 1;
-      } else {
-        summary.successDays += 1;
-      }
+    const partialSuccess = Boolean(ingestionResult?.partialSuccess) || (success && errors.length > 0);
+    if (success && errors.length === 0) {
+      summary.successDays += 1;
+    } else if (partialSuccess) {
+      summary.partialFailureDays += 1;
     } else {
       summary.failedDays += 1;
     }
@@ -104,14 +103,15 @@ export async function handleBackfillData(request, env) {
       ...ingestionResult,
       errors,
       success,
+      partialSuccess,
     });
   }
 
-  const overallSuccess = summary.failedDays === 0;
+  const overallSuccess = summary.failedDays === 0 && summary.partialFailureDays === 0;
   const status = summary.failedDays === summary.totalDays ? 502 : 200;
   const message = overallSuccess
     ? `Backfill completed for ${summary.totalDays} day(s).`
-    : summary.successDays > 0
+    : summary.successDays > 0 || summary.partialFailureDays > 0
       ? `${summary.failedDays} day(s) failed during backfill.`
       : 'Backfill failed for all requested days.';
 

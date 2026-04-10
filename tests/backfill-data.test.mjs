@@ -170,7 +170,7 @@ test('handleBackfillData keeps summary buckets distinct for partial success', as
 
   const stubResults = [
     { success: true, errors: [], date: '2026-04-08' },
-    { success: true, errors: ['partial warning'], date: '2026-04-09' },
+    { success: false, partialSuccess: true, errors: ['partial warning'], date: '2026-04-09' },
     { success: false, errors: ['failed'], date: '2026-04-10' },
   ];
 
@@ -197,6 +197,7 @@ test('handleBackfillData keeps summary buckets distinct for partial success', as
     assert.equal(body.summary.failedDays, 1);
     assert.equal(body.summary.totalDays, 3);
     assert.equal(body.success, false);
+    assert.equal(body.results[1].partialSuccess, true);
   } finally {
     __resetBackfillRunSourceItemIngestion();
   }

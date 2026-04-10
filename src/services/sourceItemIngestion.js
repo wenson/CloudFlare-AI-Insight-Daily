@@ -32,6 +32,7 @@ function buildResult({
   date,
   mode,
   includeCounts = true,
+  partialSuccess = false,
 }) {
   const base = {
     success,
@@ -41,6 +42,9 @@ function buildResult({
     date,
     mode,
   };
+  if (partialSuccess) {
+    base.partialSuccess = true;
+  }
 
   if (!includeCounts) {
     return base;
@@ -242,13 +246,18 @@ export async function runSourceItemIngestion(env, options) {
         });
       }
 
-      return buildSuccessResponse({
-        message: 'Partial source ingestion completed.',
+      const partialSuccess = errors.length > 0;
+      return buildResult({
+        success: !partialSuccess,
+        message: partialSuccess
+          ? 'Partial source ingestion completed with errors.'
+          : 'Partial source ingestion completed.',
         status: 200,
         counts,
         date: requestedDate,
         mode,
         errors,
+        partialSuccess,
       });
     }
 

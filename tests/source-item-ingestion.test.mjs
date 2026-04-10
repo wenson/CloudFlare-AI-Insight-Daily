@@ -148,7 +148,9 @@ test('runSourceItemIngestion stores successful categories and reports failed cat
       allowPartialSuccess: true,
     });
 
-    assert.equal(result.success, true);
+    assert.equal(result.success, false);
+    assert.equal(result.partialSuccess, true);
+    assert.equal(result.status, 200);
     assert.equal(result.date, '2026-04-10');
     assert.equal(result.mode, 'scheduled');
     assert.equal(result.counts.news, 1);
