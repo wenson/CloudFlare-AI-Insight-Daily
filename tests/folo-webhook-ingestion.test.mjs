@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   __resetFoloWebhookDependencies,
   __setFoloWebhookDependencies,
+  matchesTargetFeed,
   runFoloWebhookIngestion,
 } from '../src/services/foloWebhookIngestion.js';
 
@@ -103,6 +104,24 @@ test('runFoloWebhookIngestion returns 400 when payload has no usable feed identi
   assert.equal(result.matched, false);
   assert.match(result.message, /feed identity/i);
   assert.equal(env.DB.state.batches.length, 0);
+});
+
+test('matchesTargetFeed falls back to source_meta.extra.folo_feed when top-level feed fields are missing', () => {
+  const item = createUnifiedItem({
+    source_meta: {
+      raw_json: { id: 'item-1' },
+      extra: {
+        folo_feed: {
+          feed_id: 'feed-openai',
+          feed_url: 'https://openai.com/blog/rss.xml',
+          site_url: 'https://openai.com/blog',
+          feed_title: 'OpenAI Blog',
+        },
+      },
+    },
+  });
+
+  assert.equal(matchesTargetFeed(item, { feedId: 'feed-openai' }), true);
 });
 
 test('runFoloWebhookIngestion fetches one category and stores only matching feed items', async () => {

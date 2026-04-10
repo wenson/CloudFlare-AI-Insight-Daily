@@ -3,6 +3,13 @@ import { getRandomUserAgent, sleep, isDateWithinLastDays, stripHtml, formatDateT
 function buildSourceMeta(entry) {
     const source = entry?.entries || {};
     const feed = entry?.feeds || {};
+    const feedMeta = {
+        feed_id: feed.id || null,
+        feed_url: feed.url || null,
+        site_url: feed.siteUrl || null,
+        feed_title: feed.title || null,
+    };
+    const hasFeedIdentity = Boolean(feedMeta.feed_id || feedMeta.feed_url || feedMeta.site_url);
     return {
         guid: source.guid || source.url || null,
         author_name: source.author || null,
@@ -14,18 +21,15 @@ function buildSourceMeta(entry) {
         categories: source.categories || null,
         media: source.media || null,
         attachments: source.attachments || null,
-        extra: {
-            ...(source.extra || {}),
-            folo_feed: {
-                feed_id: feed.id || null,
-                feed_url: feed.url || null,
-                site_url: feed.siteUrl || null,
-                feed_title: feed.title || null,
-            },
-        },
-        feed_id: feed.id || null,
-        feed_url: feed.url || null,
-        site_url: feed.siteUrl || null,
+        extra: hasFeedIdentity
+            ? {
+                ...(source.extra || {}),
+                folo_feed: feedMeta,
+            }
+            : (source.extra || null),
+        feed_id: feedMeta.feed_id,
+        feed_url: feedMeta.feed_url,
+        site_url: feedMeta.site_url,
         raw_json: source,
     };
 }

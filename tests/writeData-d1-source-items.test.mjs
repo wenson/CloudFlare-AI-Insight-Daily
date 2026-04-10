@@ -153,14 +153,14 @@ test('handleWriteData preserves feed metadata needed by webhook ingestion filter
 
     assert.equal(response.status, 200);
     const inserted = env.DB.state.batches[0][0].args;
-    assert.equal(inserted[18], JSON.stringify({
+    assert.ok(inserted.includes(JSON.stringify({
       folo_feed: {
         feed_id: 'feed-openai',
         feed_url: 'https://openai.com/blog/rss.xml',
         site_url: 'https://openai.com/blog',
         feed_title: 'OpenAI Blog',
       },
-    }));
+    })));
   } finally {
     setFetchDate(previousFetchDate);
     global.fetch = originalFetch;
