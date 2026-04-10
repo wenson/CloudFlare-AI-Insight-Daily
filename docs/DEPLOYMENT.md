@@ -73,6 +73,10 @@ npx wrangler d1 execute ai-daily --local --command="SELECT name FROM sqlite_mast
 - 各个 `*_LIST_ID`
 - 页面标题、播客标题、插入尾注等显示配置
 
+其中 webhook 相关配置建议如下：
+
+- `FOLO_WEBHOOK_FEED_MAP`：放在 `[vars]`，值是 JSON 数组，用于把 webhook 的 `feedId`/`feedUrl`/`siteUrl` 映射到 `sourceType` 与 `sourceKey`
+
 最常见的改法：
 
 - 使用 Gemini：保留 `USE_MODEL_PLATFORM = "GEMINI"`
@@ -98,6 +102,25 @@ npx wrangler secret put OPENAI_API_KEY
 ```
 
 - `FOLO_COOKIE`：Cloudflare 定时任务和 `/backfillData` 补数接口都会读取这个密文 Cookie，而不是从浏览器 localStorage 里拿。上传 Cookie 后，调度/补数执行时只在 Worker 内部使用它访问 Folo，手动 `/writeData` 依然通过浏览器端存储迁移 Cookie。
+- `FOLO_WEBHOOK_TOKEN`：建议作为 secret 配置，用于公开 `/webhooks/folo` 的 URL token 鉴权。
+
+`FOLO_WEBHOOK_FEED_MAP` 示例（放在 `[vars]`，需序列化为单行 JSON 字符串）：
+
+```json
+[
+  {
+    "sourceKey": "newsAggregator",
+    "sourceType": "news",
+    "feedId": "7495278092438373376"
+  },
+  {
+    "sourceKey": "twitter",
+    "sourceType": "socialMedia",
+    "feedUrl": "https://x.com/openai",
+    "siteUrl": "https://openai.com"
+  }
+]
+```
 
 ### 5. 本地调试
 
@@ -157,6 +180,8 @@ npx wrangler deploy --dry-run
 - `FOLO_COOKIE_KV_KEY`
 - `FOLO_DATA_API`
 - `FOLO_FILTER_DAYS`
+- `FOLO_WEBHOOK_TOKEN`
+- `FOLO_WEBHOOK_FEED_MAP`
 
 按模型平台二选一：
 
