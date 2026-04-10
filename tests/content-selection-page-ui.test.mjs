@@ -267,6 +267,10 @@ test('content selection page renders the backfill control set', () => {
   assert.match(html, /showToast\(summaryText\)/);
   assert.match(html, /if \(!response\.ok\)/);
   assert.doesNotMatch(html, /payload\.success/);
+  assert.match(html, /try \{[\s\S]*await response\.json\(\);/);
+  assert.match(html, /catch \(error\)/);
+  assert.match(html, /补数响应格式异常/);
+  assert.doesNotMatch(html, /\.catch\(\(\) => \(\{\}\)\)/);
 });
 
 test('backfill panel does not live inside the genAIContent form', () => {

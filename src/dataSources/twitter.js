@@ -1,4 +1,4 @@
-import { getRandomUserAgent, sleep, isDateWithinLastDays, stripHtml, formatDateToChineseWithTime, escapeHtml, buildCurlCommand} from '../helpers';
+import { getRandomUserAgent, sleep, isDateWithinLastDays, stripHtml, formatDateToChineseWithTime, escapeHtml, buildCurlCommand, getSourceItemFetchDate} from '../helpers';
 
 function buildSourceMeta(entry) {
     const source = entry?.entries || {};
@@ -88,7 +88,8 @@ const TwitterDataSource = {
                 }
                 const data = await response.json();
                 if (data && data.data && data.data.length > 0) {
-                    const filteredItems = data.data.filter(entry => isDateWithinLastDays(entry.entries.publishedAt, filterDays));
+                    const referenceDate = getSourceItemFetchDate(env);
+                    const filteredItems = data.data.filter(entry => isDateWithinLastDays(entry.entries.publishedAt, filterDays, referenceDate));
                     allTwitterItems.push(...filteredItems.map(entry => ({
                         id: entry.entries.id,
                         url: entry.entries.url,

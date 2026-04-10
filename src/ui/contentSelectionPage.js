@@ -826,35 +826,53 @@ export function generateContentSelectionPageHtml(env, dateStr, allData, dataCate
         }
 
         try {
-          const response = await fetch('/backfillData', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ startDate: startValue, endDate: endValue }),
-          });
-          const payload = await response.json().catch(() => ({}));
-          const summary = payload?.summary || {};
-          const summaryText =
-            '补数完成：' +
-            (summary.successDays ?? 0) +
-            ' 天成功，' +
-            (summary.partialFailureDays ?? 0) +
-            ' 天部分失败，' +
-            (summary.failedDays ?? 0) +
-            ' 天失败';
+        const response = await fetch('/backfillData', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ startDate: startValue, endDate: endValue }),
+        });
 
-          if (!response.ok) {
-            const message = payload.message || '补数遇到问题';
-            showToast(message, 'error');
-            if (backfillResultNode) {
-              backfillResultNode.textContent = summaryText;
-            }
-            return;
+        if (!response.ok) {
+          let errorPayload = {};
+          try {
+            errorPayload = await response.json();
+          } catch {
+            // ignore parse errors
           }
-
-          showToast(summaryText);
+          const message = errorPayload.message || '补数遇到问题';
+          showToast(message, 'error');
           if (backfillResultNode) {
-            backfillResultNode.textContent = summaryText;
+            backfillResultNode.textContent = message;
           }
+          return;
+        }
+
+        let payload = {};
+        try {
+          payload = await response.json();
+        } catch (error) {
+          const message = '补数响应格式异常，请重新登录后再试';
+          showToast(message, 'error');
+          if (backfillResultNode) {
+            backfillResultNode.textContent = message;
+          }
+          return;
+        }
+
+        const summary = payload?.summary || {};
+        const summaryText =
+          '补数完成：' +
+          (summary.successDays ?? 0) +
+          ' 天成功，' +
+          (summary.partialFailureDays ?? 0) +
+          ' 天部分失败，' +
+          (summary.failedDays ?? 0) +
+          ' 天失败';
+
+        showToast(summaryText);
+        if (backfillResultNode) {
+          backfillResultNode.textContent = summaryText;
+        }
         } catch (error) {
           const message = error?.message || '补数请求失败';
           showToast(message, 'error');

@@ -130,6 +130,7 @@ test('runSourceItemIngestion stores successful categories and reports failed cat
       twitterList: createEntry('tweet-1', '2026-04-10T10:00:00.000Z', 'Tweet item'),
     };
 
+    assert.equal(getFetchDate(), '2026-04-01');
     return new Response(JSON.stringify({
       data: entryByListId[body.listId] ? [entryByListId[body.listId]] : [],
     }), {
@@ -192,6 +193,7 @@ test('runSourceItemIngestion all-category failure without partial success still 
       twitterList: createEntry('tweet-1', '2026-04-10T10:00:00.000Z', 'Tweet item'),
     };
 
+    assert.equal(getFetchDate(), '2026-04-01');
     return new Response(JSON.stringify({
       data: entryByListId[listId] ? [entryByListId[listId]] : [],
     }), {

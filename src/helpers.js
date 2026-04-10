@@ -178,13 +178,13 @@ export function getShanghaiTime() {
  * @param {number} days - The number of days to look back (e.g., 3 for today and the past 2 days).
  * @returns {boolean} True if the date is within the last 'days', false otherwise.
  */
-export function isDateWithinLastDays(dateString, days) {
+export function isDateWithinLastDays(dateString, days, referenceDate = fetchDate) {
     // Convert both dates to Shanghai time for consistent comparison
     const itemDate = convertToShanghaiTime(dateString);
     if (!itemDate) {
         return false;
     }
-    const today = new Date(fetchDate);
+    const today = new Date(referenceDate);
 
     // Normalize today to the start of its day in Shanghai time
     today.setHours(0, 0, 0, 0);
@@ -300,8 +300,27 @@ function shellEscapeSingleQuoted(value) {
     return String(value).replace(/'/g, `'\\''`);
 }
 
+export function getSourceItemFetchDate(env) {
+    return env?.SOURCE_ITEM_FETCH_DATE ?? fetchDate;
+}
+
+const REDACTED = '[REDACTED]';
+const SENSITIVE_HEADER_KEYS = new Set(['cookie', 'authorization']);
+
+function sanitizeHeaderValue(key, value) {
+    if (typeof value !== 'string') return value;
+    return SENSITIVE_HEADER_KEYS.has(key.toLowerCase()) ? REDACTED : value;
+}
+
+export function redactSensitiveHeaders(headers = {}) {
+    return Object.fromEntries(
+        Object.entries(headers || {}).map(([key, value]) => [key, sanitizeHeaderValue(key, value)]),
+    );
+}
+
 export function buildCurlCommand(url, headers, body) {
-    const headerFlags = Object.entries(headers)
+    const safeHeaders = redactSensitiveHeaders(headers);
+    const headerFlags = Object.entries(safeHeaders)
         .map(([key, value]) => `-H '${shellEscapeSingleQuoted(`${key}: ${value}`)}'`)
         .join(' \\\n  ');
 

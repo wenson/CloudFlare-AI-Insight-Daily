@@ -1,8 +1,8 @@
-import { getRandomUserAgent, sleep, isDateWithinLastDays, stripHtml, formatDateToChineseWithTime, escapeHtml, buildCurlCommand, getFetchDate } from '../helpers';
+import { getRandomUserAgent, sleep, isDateWithinLastDays, stripHtml, formatDateToChineseWithTime, escapeHtml, buildCurlCommand, getFetchDate, getSourceItemFetchDate } from '../helpers';
 
-function getPublishedBeforeBoundary(filterDays) {
-    const fetchDate = getFetchDate();
-    const [year, month, day] = fetchDate.split('-').map(Number);
+function getPublishedBeforeBoundary(filterDays, referenceDate) {
+    const targetDate = referenceDate ?? getFetchDate();
+    const [year, month, day] = targetDate.split('-').map(Number);
     const utcBoundary = new Date(Date.UTC(year, month - 1, day - (filterDays - 1), -8, 0, 0, 0));
     return utcBoundary.toISOString();
 }
@@ -46,7 +46,8 @@ const NewsAggregatorDataSource = {
             };
         }
 
-        const publishedBefore = getPublishedBeforeBoundary(filterDays);
+        const referenceDate = getSourceItemFetchDate(env);
+        const publishedBefore = getPublishedBeforeBoundary(filterDays, referenceDate);
         let publishedAfter = null;
 
         for (let i = 0; i < maxPages; i++) {
@@ -102,7 +103,7 @@ const NewsAggregatorDataSource = {
                 const items = Array.isArray(data?.data) ? data.data : [];
 
                 if (items.length > 0) {
-                    const filteredItems = items.filter(entry => isDateWithinLastDays(entry.entries.publishedAt, filterDays));
+                    const filteredItems = items.filter(entry => isDateWithinLastDays(entry.entries.publishedAt, filterDays, referenceDate));
                     allNewsItems.push(...filteredItems.map(entry => ({
                         id: entry.entries.id,
                         url: entry.entries.url,

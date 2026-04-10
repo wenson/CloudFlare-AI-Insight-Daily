@@ -1,7 +1,7 @@
 import { dataSources, fetchAllData, fetchDataByCategory } from '../dataFetchers.js';
 import { upsertSourceItems } from '../d1.js';
 import { buildSourceItemRecord } from '../sourceItems.js';
-import { getFetchDate, setFetchDate } from '../helpers.js';
+import { getFetchDate } from '../helpers.js';
 
 export const MAX_BACKFILL_DAYS = 31;
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
@@ -142,8 +142,7 @@ export async function runSourceItemIngestion(env, options) {
   } = options;
   const counts = createCountsTemplate();
   const requestedDate = date ?? getFetchDate() ?? formatDateAsString(new Date());
-  const previousFetchDate = getFetchDate();
-  setFetchDate(requestedDate);
+  const fetchEnv = { ...env, SOURCE_ITEM_FETCH_DATE: requestedDate };
 
   try {
     if (requireFoloCookie && !foloCookie) {
@@ -183,7 +182,7 @@ export async function runSourceItemIngestion(env, options) {
     }
 
     if (category) {
-      const { data, errors: fetchErrors } = await fetchDataByCategory(env, category, foloCookie);
+      const { data, errors: fetchErrors } = await fetchDataByCategory(fetchEnv, category, foloCookie);
       counts[category] = data.length;
 
       if (fetchErrors.length > 0) {
@@ -217,7 +216,7 @@ export async function runSourceItemIngestion(env, options) {
       const errors = [];
 
       for (const sourceType of sourceTypes) {
-        const { data, errors: fetchErrors } = await fetchDataByCategory(env, sourceType, foloCookie);
+        const { data, errors: fetchErrors } = await fetchDataByCategory(fetchEnv, sourceType, foloCookie);
         counts[sourceType] = data.length;
 
         if (fetchErrors.length > 0) {
@@ -254,7 +253,7 @@ export async function runSourceItemIngestion(env, options) {
     }
 
     const sourceTypes = Object.keys(dataSources);
-    const { data: allUnifiedData, errors: unifiedErrors } = await fetchAllData(env, foloCookie);
+    const { data: allUnifiedData, errors: unifiedErrors } = await fetchAllData(fetchEnv, foloCookie);
     const allSourceRecords = [];
     for (const sourceType of sourceTypes) {
       const entries = allUnifiedData[sourceType] || [];
@@ -301,7 +300,5 @@ export async function runSourceItemIngestion(env, options) {
       errors: [error.message],
       includeCounts: false,
     });
-  } finally {
-    setFetchDate(previousFetchDate);
   }
 }
