@@ -224,3 +224,89 @@ test('handleWriteData all-category path writes one flattened D1 batch and keeps 
     global.fetch = originalFetch;
   }
 });
+
+test('handleWriteData surfaces unexpected ingestion failures as 500', async () => {
+  const originalFetch = global.fetch;
+  const previousFetchDate = getFetchDate();
+
+  global.fetch = async () => new Response(JSON.stringify({
+    data: [
+      {
+        entries: {
+          id: 'news-1',
+          url: 'https://example.com/news/1',
+          title: 'D1 test item',
+          content: '<p>d1 content</p>',
+          publishedAt: '2026-04-08T08:00:00.000Z',
+          author: 'author-1',
+        },
+        feeds: {
+          title: 'Feed-1',
+        },
+      },
+    ],
+  }), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' },
+  });
+
+  const env = {
+    DATA_KV: {
+      async put() {},
+    },
+    DB: {
+      ...createDb(),
+      async batch() {
+        throw new Error('db batch boom');
+      },
+    },
+    FOLO_DATA_API: 'https://api.follow.is/entries',
+    FOLO_FILTER_DAYS: '1',
+    NEWS_AGGREGATOR_LIST_ID: 'configured-list-id',
+    NEWS_AGGREGATOR_FETCH_PAGES: '1',
+  };
+
+  const request = new Request('https://example.com/writeData', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ foloCookie: 'valid-cookie' }),
+  });
+
+  try {
+    setFetchDate('2026-04-08');
+    const response = await handleWriteData(request, env);
+    const body = await response.json();
+
+    assert.equal(response.status, 500);
+    assert.equal(body.success, false);
+    assert.equal(body.message, 'An unhandled error occurred during data processing.');
+    assert.match(body.error, /db batch boom/);
+    assert.match(body.details, /db batch boom/);
+    assert.equal(body.newsItemCount, undefined);
+  } finally {
+    setFetchDate(previousFetchDate);
+    global.fetch = originalFetch;
+  }
+});
+
+test('handleWriteData all-category missing DB keeps original 500 shape', async () => {
+  const request = new Request('https://example.com/writeData', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ foloCookie: 'valid-cookie' }),
+  });
+
+  const response = await handleWriteData(request, {
+    DATA_KV: {
+      async put() {},
+    },
+  });
+
+  const body = await response.json();
+  assert.equal(response.status, 500);
+  assert.equal(body.success, false);
+  assert.match(body.message, /D1 database binding 'DB' with batch support is required/i);
+  assert.equal(body.newsItemCount, undefined);
+  assert.equal(body.paperItemCount, undefined);
+  assert.equal(body.socialMediaItemCount, undefined);
+});

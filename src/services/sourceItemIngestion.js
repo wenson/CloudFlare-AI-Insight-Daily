@@ -13,7 +13,7 @@ function createCountsTemplate() {
   }, {});
 }
 
-function formatCounts(counts) {
+function formatCounts(counts = createCountsTemplate()) {
   const snapshot = { ...counts };
   return {
     counts: snapshot,
@@ -31,20 +31,28 @@ function buildResult({
   counts,
   date,
   mode,
+  includeCounts = true,
 }) {
-  const { counts: snapshot, newsItemCount, paperItemCount, socialMediaItemCount } = formatCounts(counts);
-
-  return {
+  const base = {
     success,
     status,
     message,
     errors,
+    date,
+    mode,
+  };
+
+  if (!includeCounts) {
+    return base;
+  }
+
+  const { counts: snapshot, newsItemCount, paperItemCount, socialMediaItemCount } = formatCounts(counts);
+  return {
+    ...base,
     counts: snapshot,
     newsItemCount,
     paperItemCount,
     socialMediaItemCount,
-    date,
-    mode,
   };
 }
 
@@ -97,7 +105,7 @@ export function enumerateDateRange(startDate, endDate, maxDays = MAX_BACKFILL_DA
   return dates;
 }
 
-function buildErrorResponse({ message, status, counts, date, mode, errors }) {
+function buildErrorResponse({ message, status, counts, date, mode, errors, includeCounts = true }) {
   return buildResult({
     success: false,
     status,
@@ -106,10 +114,11 @@ function buildErrorResponse({ message, status, counts, date, mode, errors }) {
     counts,
     date,
     mode,
+    includeCounts,
   });
 }
 
-function buildSuccessResponse({ message, status, counts, date, mode, errors = [] }) {
+function buildSuccessResponse({ message, status, counts, date, mode, errors = [], includeCounts = true }) {
   return buildResult({
     success: true,
     status,
@@ -118,6 +127,7 @@ function buildSuccessResponse({ message, status, counts, date, mode, errors = []
     counts,
     date,
     mode,
+    includeCounts,
   });
 }
 
@@ -144,6 +154,7 @@ export async function runSourceItemIngestion(env, options) {
         date: requestedDate,
         mode,
         errors: [],
+        includeCounts: false,
       });
     }
 
@@ -155,6 +166,7 @@ export async function runSourceItemIngestion(env, options) {
         date: requestedDate,
         mode,
         errors: [],
+        includeCounts: false,
       });
     }
 
@@ -166,6 +178,7 @@ export async function runSourceItemIngestion(env, options) {
         date: requestedDate,
         mode,
         errors: [],
+        includeCounts: false,
       });
     }
 
@@ -276,6 +289,9 @@ export async function runSourceItemIngestion(env, options) {
     });
   } catch (error) {
     console.error('Error during source item ingestion:', error);
+    if (mode === 'manual') {
+      throw error;
+    }
     return buildErrorResponse({
       message: 'An unexpected error occurred during source item ingestion.',
       status: 500,
@@ -283,6 +299,7 @@ export async function runSourceItemIngestion(env, options) {
       date: requestedDate,
       mode,
       errors: [error.message],
+      includeCounts: false,
     });
   } finally {
     setFetchDate(previousFetchDate);
