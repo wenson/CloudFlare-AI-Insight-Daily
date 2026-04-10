@@ -8,7 +8,9 @@ import { handleGenAIContent, handleGenAIPodcastScript, handleGenAIDailyAnalysis 
 import { handleGenAIDailyPage } from './handlers/genAIDailyPage.js';
 import { handleRss } from './handlers/getRss.js';
 import { dataSources } from './dataFetchers.js';
+import { getISODate } from './helpers.js';
 import { handleLogin, isAuthenticated, handleLogout } from './auth.js';
+import { runSourceItemIngestion } from './services/sourceItemIngestion.js';
 
 function getRequiredEnvVars(env) {
     const requiredEnvVars = [
@@ -112,5 +114,42 @@ export default {
             response.headers.append('Set-Cookie', newCookie);
         }
         return response;
-    }
+    },
+
+    async scheduled(controller = {}, env, ctx = {}) {
+        const scheduledPromise = runScheduledSourceItemIngestion(controller, env);
+        if (ctx?.waitUntil) {
+            ctx.waitUntil(scheduledPromise);
+            return;
+        }
+        return await scheduledPromise;
+    },
 };
+
+async function runScheduledSourceItemIngestion(controller = {}, env) {
+    const scheduledDate = controller.scheduledTime ? getISODate(new Date(controller.scheduledTime)) : getISODate();
+    const result = await runSourceItemIngestion(env, {
+        date: scheduledDate,
+        mode: 'scheduled',
+        foloCookie: env.FOLO_COOKIE,
+        requireFoloCookie: true,
+        allowPartialSuccess: true,
+    });
+
+    const payload = {
+        event: 'scheduled-source-ingestion',
+        cron: controller.cron || null,
+        date: scheduledDate,
+        success: result?.success ?? false,
+        counts: result?.counts ?? null,
+        errors: result?.errors ?? [],
+    };
+
+    if (result?.success) {
+        console.log(JSON.stringify(payload));
+    } else {
+        console.error(JSON.stringify(payload));
+    }
+
+    return result;
+}

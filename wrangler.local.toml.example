@@ -39,3 +39,6 @@ PODCAST_END = "今天的情报就到这里，注意隐蔽，赶紧撤离"
 INSERT_FOOT = "false"
 INSERT_AD = "false"
 INSERT_APP_URL = "<h3>[查看完整版AI日报↗️ https://ai.hubtoday.app/](https://ai.hubtoday.app/)</h3>"
+
+[triggers]
+crons = ["10 0 * * *"]
