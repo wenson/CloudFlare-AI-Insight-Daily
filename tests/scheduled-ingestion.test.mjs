@@ -120,13 +120,18 @@ test('scheduled ingestion reads FOLO_COOKIE and writes source_items without writ
 
 test('scheduled ingestion reports missing FOLO_COOKIE without fetching upstream', async () => {
   const originalFetch = global.fetch;
+  const originalConsoleError = console.error;
   const env = createEnv({ FOLO_COOKIE: '' });
   let fetchCalls = 0;
   const waitUntilPromises = [];
+  const errorLogs = [];
 
   global.fetch = async () => {
     fetchCalls += 1;
     return new Response('{}');
+  };
+  console.error = (...args) => {
+    errorLogs.push(args.join(' '));
   };
 
   try {
@@ -142,7 +147,77 @@ test('scheduled ingestion reports missing FOLO_COOKIE without fetching upstream'
 
     assert.equal(fetchCalls, 0);
     assert.equal(env.DB.state.batches.length, 0);
+    assert.match(errorLogs.join('\n'), /FOLO_COOKIE/);
   } finally {
     global.fetch = originalFetch;
+    console.error = originalConsoleError;
+  }
+});
+
+test('scheduled ingestion logs degraded partial success explicitly', async () => {
+  const originalFetch = global.fetch;
+  const originalRandom = Math.random;
+  const originalConsoleError = console.error;
+  const env = createEnv({
+    REDDIT_LIST_ID: 'redditList',
+    REDDIT_FETCH_PAGES: '1',
+  });
+  const waitUntilPromises = [];
+  const errorLogs = [];
+
+  Math.random = () => 0;
+  console.error = (...args) => {
+    errorLogs.push(args.join(' '));
+  };
+  global.fetch = async (_url, init = {}) => {
+    const body = JSON.parse(init.body || '{}');
+    if (body.listId === 'redditList') {
+      return new Response('Unauthorized', {
+        status: 401,
+        statusText: 'Unauthorized',
+      });
+    }
+
+    return new Response(JSON.stringify({
+      data: [{
+        entries: {
+          id: 'news-1',
+          url: 'https://example.com/news-1',
+          title: 'Scheduled item',
+          content: '<p>Scheduled body</p>',
+          publishedAt: '2026-04-10T08:00:00.000Z',
+          author: 'scheduled-author',
+        },
+        feeds: {
+          title: 'Scheduled Feed',
+        },
+      }],
+    }), {
+      headers: { 'Content-Type': 'application/json' },
+    });
+  };
+
+  try {
+    await worker.scheduled({
+      scheduledTime: Date.parse('2026-04-10T00:10:00.000Z'),
+      cron: '10 0 * * *',
+    }, env, {
+      waitUntil(promise) {
+        waitUntilPromises.push(promise);
+      },
+    });
+    await Promise.all(waitUntilPromises);
+
+    const scheduledLog = errorLogs.find((line) => line.includes('scheduled-source-ingestion'));
+    assert.ok(scheduledLog);
+    const payload = JSON.parse(scheduledLog);
+    assert.equal(payload.success, false);
+    assert.equal(payload.partialSuccess, true);
+    assert.match(payload.message, /Partial source ingestion/);
+    assert.match(payload.errors.join('\n'), /reddit/i);
+  } finally {
+    global.fetch = originalFetch;
+    Math.random = originalRandom;
+    console.error = originalConsoleError;
   }
 });

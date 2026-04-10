@@ -144,6 +144,9 @@ async function runScheduledSourceItemIngestion(controller = {}, env) {
         cron: controller.cron || null,
         date: scheduledDate,
         success: result?.success ?? false,
+        partialSuccess: result?.partialSuccess === true,
+        status: result?.status ?? null,
+        message: result?.message || '',
         counts: result?.counts ?? null,
         errors: result?.errors ?? [],
     };
