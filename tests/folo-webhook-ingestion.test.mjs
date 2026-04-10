@@ -122,6 +122,8 @@ test('matchesTargetFeed falls back to source_meta.extra.folo_feed when top-level
   });
 
   assert.equal(matchesTargetFeed(item, { feedId: 'feed-openai' }), true);
+  assert.equal(matchesTargetFeed(item, { feedUrl: 'https://openai.com/blog/rss.xml' }), true);
+  assert.equal(matchesTargetFeed(item, { siteUrl: 'https://openai.com/blog' }), true);
 });
 
 test('runFoloWebhookIngestion fetches one category and stores only matching feed items', async () => {
