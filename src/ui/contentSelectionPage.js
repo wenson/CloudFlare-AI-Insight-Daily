@@ -232,6 +232,18 @@ export function generateContentSelectionPageHtml(env, dateStr, allData, dataCate
     categoryState[category.id],
   )).join('');
 
+  const cookiePanelHtml = `
+    <section class="cookie-panel card" data-cookie-panel>
+      <h2>Folo Cookie 设置</h2>
+      <label class="cookie-field" for="foloCookie">Folo Cookie</label>
+      <input id="foloCookie" type="text" placeholder="在此输入 Folo Cookie">
+      <p class="cookie-help">Cookie 将保存在浏览器本地存储中，只用于当前工作台抓取。</p>
+      <div class="cookie-actions">
+        <button type="button" class="button button-secondary" data-save-cookie>保存 Cookie</button>
+        <button type="button" class="button button-ghost" data-close-cookie-panel>关闭</button>
+      </div>
+    </section>`;
+
   const backfillPanelHtml = `
     <section class="backfill-panel card" data-backfill-panel>
       <div class="backfill-panel-header">
@@ -255,52 +267,51 @@ export function generateContentSelectionPageHtml(env, dateStr, allData, dataCate
     </section>`;
 
   const bodyContent = `
-    <main class="workspace-shell">
-      ${backfillPanelHtml}
+    <main class="workspace-shell workspace-shell-content">
       <form class="workspace-form" action="/genAIContent" method="POST">
         <input type="hidden" name="date" value="${safeDateStr}">
         <div data-selection-hidden-inputs hidden></div>
 
-        <header class="workspace-header card">
-          <div class="workspace-header-copy">
-            <p class="workspace-kicker">AI Insight Daily</p>
-            <h1>${safeDisplayDate} 内容工作台</h1>
-            <div class="workspace-meta">
+        <header class="workspace-status-band card">
+          <div class="workspace-status-top">
+            <div class="workspace-header-copy">
+              <p class="workspace-kicker">AI Insight Daily</p>
+              <h1>${safeDisplayDate} 内容工作台</h1>
+              <p class="workspace-intro">先筛选内容，再进入日报或播客生成流程。</p>
+            </div>
+            <div class="workspace-primary-actions">
+              <button type="button" class="button button-secondary" data-fetch-all>抓取最新数据</button>
+              <button type="button" class="button button-ghost" data-toggle-advanced-actions aria-expanded="false">高级操作</button>
+              <button type="submit" class="button button-primary">生成 AI 日报</button>
+            </div>
+          </div>
+          <div class="workspace-status-metrics">
               <span class="chip status-chip">发布日期 ${safeDisplayDate}</span>
               <span class="chip status-chip">共 ${totalItems} 条候选内容</span>
               <span class="chip status-chip" data-selected-count>已选 0 条</span>
-            </div>
-          </div>
-          <div class="workspace-actions">
-            <button type="button" class="button button-secondary" data-open-cookie-panel>Cookie 设置</button>
-            <button type="button" class="button button-secondary" data-fetch-all>抓取最新数据</button>
-            <button type="submit" class="button button-primary">生成 AI 日报</button>
           </div>
         </header>
 
-        <section class="workspace-toolbar card">
-          <div class="workspace-toolbar-left">
-            ${categoryNav}
-          </div>
+        <section class="workspace-toolbar workspace-toolbar-card card">
+          <div class="workspace-toolbar-left">${categoryNav}</div>
           <div class="workspace-toolbar-right">
-            <div class="batch-size-group" aria-label="每批加载条数">
-              ${batchSizeControls}
-            </div>
+            <div class="batch-size-group" aria-label="每批加载条数">${batchSizeControls}</div>
           </div>
         </section>
 
         <div class="workspace-grid">
-          <section class="workspace-main">
+          <section class="workspace-main workspace-content-column">
             ${panels}
           </section>
 
-          <aside class="selection-sidebar" aria-label="内容侧栏">
-            <section class="selection-summary-card card" aria-label="已选内容摘要">
+          <aside class="selection-sidebar workspace-aside-column" aria-label="内容侧栏">
+            <section class="selection-summary-card workspace-aside-section card" aria-label="已选内容摘要">
               <div class="selection-sidebar-header">
                 <h2>已选摘要</h2>
                 <p data-sidebar-status>还没有选择内容</p>
               </div>
-              <div class="selection-sidebar-body" data-selection-summary-list>
+              <div class="selection-summary-stats" data-selection-summary-stats></div>
+              <div class="selection-sidebar-body selection-recent-list" data-selection-summary-list>
                 <p class="selection-empty">从左侧内容池选择条目后，这里会实时显示结果。</p>
               </div>
               <div class="selection-sidebar-footer">
@@ -309,7 +320,7 @@ export function generateContentSelectionPageHtml(env, dateStr, allData, dataCate
               </div>
             </section>
 
-            <section class="selection-archive-card card" aria-label="内容归档">
+            <section class="selection-archive-card workspace-aside-section card" aria-label="内容归档">
               <div class="selection-sidebar-archive" data-selection-archive>
                 <h2>内容归档</h2>
                 <div class="selection-sidebar-archive-list">
@@ -319,6 +330,17 @@ export function generateContentSelectionPageHtml(env, dateStr, allData, dataCate
             </section>
           </aside>
         </div>
+
+        <section class="advanced-actions-panel workspace-aside-section card" data-advanced-actions-panel hidden>
+          <div class="advanced-actions-header">
+            <h2>高级操作</h2>
+            <p>Cookie 设置与 Backfill 默认收起，避免干扰主流程。</p>
+          </div>
+          <div class="advanced-actions-content">
+            ${cookiePanelHtml}
+            ${backfillPanelHtml}
+          </div>
+        </section>
 
         <button type="button" class="selection-summary-mobile button button-primary" data-mobile-summary>
           已选 0 条
@@ -333,17 +355,6 @@ export function generateContentSelectionPageHtml(env, dateStr, allData, dataCate
         >
           回到顶部
         </button>
-
-        <section class="cookie-panel card" data-cookie-panel hidden>
-          <h2>Folo Cookie 设置</h2>
-          <label class="cookie-field" for="foloCookie">Folo Cookie</label>
-          <input id="foloCookie" type="text" placeholder="在此输入 Folo Cookie">
-          <p class="cookie-help">Cookie 将保存在浏览器本地存储中，只用于当前工作台抓取。</p>
-          <div class="cookie-actions">
-            <button type="button" class="button button-secondary" data-save-cookie>保存 Cookie</button>
-            <button type="button" class="button button-ghost" data-close-cookie-panel>关闭</button>
-          </div>
-        </section>
       </form>
     </main>`;
 

@@ -38,7 +38,7 @@ function createData() {
   };
 }
 
-test('content selection page renders the dashboard shell and explicit summary regions', () => {
+test('content selection page renders the refreshed workbench hierarchy and explicit summary regions', () => {
   const html = generateContentSelectionPageHtml(
     createEnv(),
     '2026-04-08',
@@ -65,21 +65,27 @@ test('content selection page renders the dashboard shell and explicit summary re
     },
   );
 
-  assert.ok(html.includes('<main class="workspace-shell">'));
-  assert.ok(html.includes('<header class="workspace-header card">'));
-  assert.ok(html.includes('<aside class="selection-sidebar" aria-label="内容侧栏">'));
-  assert.ok(html.includes('<section class="selection-summary-card card" aria-label="已选内容摘要">'));
-  assert.ok(html.includes('<section class="selection-archive-card card" aria-label="内容归档">'));
+  assert.ok(html.includes('<main class="workspace-shell workspace-shell-content">'));
+  assert.ok(html.includes('<header class="workspace-status-band card">'));
+  assert.ok(html.includes('<aside class="selection-sidebar workspace-aside-column" aria-label="内容侧栏">'));
+  assert.ok(html.includes('<section class="selection-summary-card workspace-aside-section card" aria-label="已选内容摘要">'));
+  assert.ok(html.includes('<section class="selection-archive-card workspace-aside-section card" aria-label="内容归档">'));
   assert.ok(html.includes('<button type="button" class="selection-summary-mobile button button-primary" data-mobile-summary>'));
   assert.ok(html.includes('class="category-pill chip is-active"'));
   assert.ok(html.includes('>生成 AI 日报</button>'));
   assert.match(html, /data-selection-archive/);
-  assert.match(html, /selection-summary-card[\s\S]*data-selection-summary-list[\s\S]*selection-sidebar-footer/);
+  assert.match(html, /selection-summary-card[\s\S]*selection-recent-list[\s\S]*selection-sidebar-footer/);
   assert.match(html, /selection-archive-card[\s\S]*data-selection-archive/);
   assert.match(html, /workspace-status-band/);
-  assert.match(html, /workspace-section-card/);
-  assert.match(html, /workspace-aside-section/);
+  assert.match(html, /workspace-status-metrics/);
+  assert.match(html, /workspace-primary-actions/);
+  assert.match(html, /workspace-toolbar-card/);
+  assert.match(html, /workspace-content-column/);
+  assert.match(html, /workspace-aside-column/);
+  assert.match(html, /selection-recent-list/);
   assert.match(html, /advanced-actions-panel/);
+  assert.doesNotMatch(html, /data-backfill-panel[\s\S]*?<form[^>]*class="workspace-form"/);
+  assert.match(html, /selection-summary-card[\s\S]*selection-archive-card[\s\S]*advanced-actions-panel/);
   assert.match(html, /report-reader-shell/);
   assert.match(html, /今天/);
   assert.match(html, /href="\/getContentHtml\?date=2026-04-10&category=news&pageSize=20"/);
@@ -88,9 +94,6 @@ test('content selection page renders the dashboard shell and explicit summary re
   assert.match(html, /href="\/getContentHtml\?date=2026-04-07&category=news&pageSize=20"/);
   assert.match(html, /href="\/getContentHtml\?date=2026-04-06&category=news&pageSize=20"/);
   assert.match(html, /<h2>内容归档<\/h2>/);
-  const headerActionsMatch = html.match(/<div class="workspace-actions">([\s\S]*?)<\/div>\s*<\/header>/);
-  assert.ok(headerActionsMatch);
-  assert.doesNotMatch(headerActionsMatch[1], /href="\/contentArchive"/);
   assert.doesNotMatch(html, /ondblclick=/);
   assert.match(html, /发布日期 2026\/4\/8/);
 });
@@ -279,7 +282,7 @@ test('content selection page renders the backfill control set', () => {
   assert.doesNotMatch(html, /\.catch\(\(\) => \(\{\}\)\)/);
 });
 
-test('backfill panel does not live inside the genAIContent form', () => {
+test('advanced actions panel lives inside the genAIContent form and wraps backfill controls', () => {
   const html = generateContentSelectionPageHtml(
     createEnv(),
     '2026-04-08',
@@ -289,5 +292,7 @@ test('backfill panel does not live inside the genAIContent form', () => {
 
   const formMatch = html.match(/<form[^>]*class="workspace-form"[^>]*>[\s\S]*?<\/form>/);
   assert.ok(formMatch);
-  assert.doesNotMatch(formMatch[0], /data-backfill-panel/);
+  assert.match(formMatch[0], /data-advanced-actions-panel/);
+  assert.match(formMatch[0], /data-cookie-panel/);
+  assert.match(formMatch[0], /data-backfill-panel/);
 });
