@@ -41,6 +41,29 @@ test('getFoloWebhookFeedRegistry parses JSON config into normalized records', ()
   });
 });
 
+test('getFoloWebhookFeedRegistry trims and normalizes string fields', () => {
+  const registry = getFoloWebhookFeedRegistry({
+    FOLO_WEBHOOK_FEED_MAP: JSON.stringify([
+      {
+        sourceKey: '  spaced-source  ',
+        sourceType: ' news ',
+        feedId: ' feed-1 ',
+        feedUrl: ' https://example.com/feed.xml ',
+        siteUrl: ' https://example.com ',
+      },
+    ]),
+  });
+
+  assert.equal(registry.length, 1);
+  assert.deepEqual(registry[0], {
+    sourceKey: 'spaced-source',
+    sourceType: 'news',
+    feedId: 'feed-1',
+    feedUrl: 'https://example.com/feed.xml',
+    siteUrl: 'https://example.com',
+  });
+});
+
 test('extractWebhookFeedIdentity prefers entry.feedId then feed.id then urls', () => {
   const preferred = extractWebhookFeedIdentity({
     entry: { feedId: 'entry-feed' },
@@ -55,6 +78,25 @@ test('extractWebhookFeedIdentity prefers entry.feedId then feed.id then urls', (
     matchKey: 'feedId',
     matchValue: 'entry-feed',
     feedId: 'entry-feed',
+    feedUrl: 'https://example.com/feed.xml',
+    siteUrl: 'https://example.com',
+  });
+});
+
+test('extractWebhookFeedIdentity prefers feed.id when entry.feedId is missing', () => {
+  const preferred = extractWebhookFeedIdentity({
+    entry: {},
+    feed: {
+      id: 'feed-id',
+      url: 'https://example.com/feed.xml',
+      siteUrl: 'https://example.com',
+    },
+  });
+
+  assert.deepEqual(preferred, {
+    matchKey: 'feedId',
+    matchValue: 'feed-id',
+    feedId: 'feed-id',
     feedUrl: 'https://example.com/feed.xml',
     siteUrl: 'https://example.com',
   });
