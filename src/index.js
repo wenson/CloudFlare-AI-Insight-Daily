@@ -7,6 +7,7 @@ import { handleGetContentArchive } from './handlers/getContentArchive.js';
 import { handleGenAIContent, handleGenAIPodcastScript, handleGenAIDailyAnalysis } from './handlers/genAIContent.js';
 import { handleGenAIDailyPage } from './handlers/genAIDailyPage.js';
 import { handleRss } from './handlers/getRss.js';
+import { handleBackfillData } from './handlers/backfillData.js';
 import { dataSources } from './dataFetchers.js';
 import { getISODate } from './helpers.js';
 import { handleLogin, isAuthenticated, handleLogout } from './auth.js';
@@ -82,6 +83,8 @@ export default {
         try {
             if (path === '/writeData' && request.method === 'POST') {
                 response = await handleWriteData(request, env);
+            } else if (path === '/backfillData' && request.method === 'POST') {
+                response = await handleBackfillData(request, env);
             } else if (path === '/getContentHtml' && request.method === 'GET') {
                 // Prepare dataCategories for the HTML generation
                 const dataCategories = Object.keys(dataSources).map(key => ({
