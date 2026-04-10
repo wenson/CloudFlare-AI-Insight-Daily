@@ -2,6 +2,7 @@ import { getRandomUserAgent, sleep, isDateWithinLastDays, stripHtml, formatDateT
 
 function buildSourceMeta(entry) {
     const source = entry?.entries || {};
+    const feed = entry?.feeds || {};
     return {
         guid: source.guid || source.url || null,
         author_name: source.author || null,
@@ -13,7 +14,18 @@ function buildSourceMeta(entry) {
         categories: source.categories || null,
         media: source.media || null,
         attachments: source.attachments || null,
-        extra: source.extra || null,
+        extra: {
+            ...(source.extra || {}),
+            folo_feed: {
+                feed_id: feed.id || null,
+                feed_url: feed.url || null,
+                site_url: feed.siteUrl || null,
+                feed_title: feed.title || null,
+            },
+        },
+        feed_id: feed.id || null,
+        feed_url: feed.url || null,
+        site_url: feed.siteUrl || null,
         raw_json: source,
     };
 }

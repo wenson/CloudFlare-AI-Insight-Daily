@@ -100,6 +100,73 @@ test('handleWriteData stores fetched category items through a D1 batch upsert an
   }
 });
 
+test('handleWriteData preserves feed metadata needed by webhook ingestion filters', async () => {
+  const originalFetch = global.fetch;
+  const previousFetchDate = getFetchDate();
+  const env = {
+    DATA_KV: {
+      async put() {},
+    },
+    DB: createDb(),
+    FOLO_DATA_API: 'https://api.follow.is/entries',
+    FOLO_FILTER_DAYS: '1',
+    NEWS_AGGREGATOR_LIST_ID: 'newsList',
+    NEWS_AGGREGATOR_FETCH_PAGES: '1',
+    HGPAPERS_LIST_ID: '',
+    TWITTER_LIST_ID: '',
+    REDDIT_LIST_ID: '',
+  };
+
+  global.fetch = async () => new Response(JSON.stringify({
+    data: [
+      {
+        entries: {
+          id: 'news-1',
+          url: 'https://example.com/news/1',
+          title: 'News 1',
+          content: '<p>News 1</p>',
+          publishedAt: '2026-04-10T08:00:00.000Z',
+          author: 'Author 1',
+        },
+        feeds: {
+          id: 'feed-openai',
+          title: 'OpenAI Blog',
+          url: 'https://openai.com/blog/rss.xml',
+          siteUrl: 'https://openai.com/blog',
+        },
+      },
+    ],
+  }), {
+    headers: { 'Content-Type': 'application/json' },
+  });
+
+  try {
+    setFetchDate('2026-04-10');
+    const response = await handleWriteData(
+      new Request('https://example.com/writeData', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ category: 'news', foloCookie: 'valid-cookie' }),
+      }),
+      env,
+    );
+
+    assert.equal(response.status, 200);
+    const inserted = env.DB.state.batches[0][0].args;
+    assert.equal(inserted[18], JSON.stringify({
+      folo_feed: {
+        feed_id: 'feed-openai',
+        feed_url: 'https://openai.com/blog/rss.xml',
+        site_url: 'https://openai.com/blog',
+        feed_title: 'OpenAI Blog',
+      },
+    }));
+  } finally {
+    setFetchDate(previousFetchDate);
+    global.fetch = originalFetch;
+  }
+});
+
 test('handleWriteData returns a clear 500 when D1 DB binding is missing for known categories', async () => {
   const request = new Request('https://example.com/writeData', {
     method: 'POST',

@@ -27,13 +27,14 @@ function hasAnyFeedIdentity(identity) {
 
 export function matchesTargetFeed(item, identity = {}) {
   const meta = item?.source_meta ?? {};
+  const feedMeta = meta?.extra?.folo_feed ?? {};
   const targetFeedId = normalizeOptionalString(identity.feedId);
   const targetFeedUrl = normalizeOptionalString(identity.feedUrl);
   const targetSiteUrl = normalizeOptionalString(identity.siteUrl);
 
-  const itemFeedId = normalizeOptionalString(meta.feed_id);
-  const itemFeedUrl = normalizeOptionalString(meta.feed_url);
-  const itemSiteUrl = normalizeOptionalString(meta.site_url);
+  const itemFeedId = normalizeOptionalString(meta.feed_id) || normalizeOptionalString(feedMeta.feed_id);
+  const itemFeedUrl = normalizeOptionalString(meta.feed_url) || normalizeOptionalString(feedMeta.feed_url);
+  const itemSiteUrl = normalizeOptionalString(meta.site_url) || normalizeOptionalString(feedMeta.site_url);
 
   if (targetFeedId && itemFeedId && itemFeedId === targetFeedId) {
     return true;
