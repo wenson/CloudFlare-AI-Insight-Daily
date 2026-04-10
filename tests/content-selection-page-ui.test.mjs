@@ -89,10 +89,16 @@ test('content selection page renders the refreshed workbench hierarchy and expli
   assert.ok(formMatch);
   assert.doesNotMatch(formMatch[0], /data-advanced-actions-panel/);
   assert.doesNotMatch(formMatch[0], /data-backfill-panel/);
-  assert.match(html, /<\/form>\s*<section class="advanced-actions-panel workspace-aside-section card" data-advanced-actions-panel hidden>/);
+  assert.match(
+    html,
+    /<aside class="selection-sidebar workspace-aside-column" aria-label="内容侧栏">[\s\S]*selection-archive-card[\s\S]*<section class="advanced-actions-panel workspace-aside-section card" data-advanced-actions-panel hidden>/,
+  );
+  assert.match(html, /form="contentSelectionForm"/);
   assert.match(html, /\.workspace-status-top\s*\{/);
   assert.match(html, /\.workspace-primary-actions\s*\{/);
   assert.match(html, /\.workspace-status-metrics\s*\{/);
+  assert.match(html, /\.selection-sidebar \.advanced-actions-content\s*\{/);
+  assert.match(html, /\.selection-sidebar \.backfill-panel-fields\s*\{/);
   assert.match(html, /report-reader-shell/);
   assert.match(html, /今天/);
   assert.match(html, /href="\/getContentHtml\?date=2026-04-10&category=news&pageSize=20"/);
@@ -321,5 +327,9 @@ test('advanced actions panel sits after the genAIContent form so backfill is not
   assert.doesNotMatch(formMatch[0], /data-advanced-actions-panel/);
   assert.doesNotMatch(formMatch[0], /data-cookie-panel/);
   assert.doesNotMatch(formMatch[0], /data-backfill-panel/);
-  assert.match(html, /<\/form>\s*<section class="advanced-actions-panel workspace-aside-section card" data-advanced-actions-panel hidden>[\s\S]*data-cookie-panel[\s\S]*data-backfill-panel/);
+  assert.match(html, /<form id="contentSelectionForm" class="workspace-form" action="\/genAIContent" method="POST">/);
+  assert.match(
+    html,
+    /<aside class="selection-sidebar workspace-aside-column" aria-label="内容侧栏">[\s\S]*selection-archive-card[\s\S]*<section class="advanced-actions-panel workspace-aside-section card" data-advanced-actions-panel hidden>[\s\S]*data-cookie-panel[\s\S]*data-backfill-panel/,
+  );
 });

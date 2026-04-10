@@ -380,6 +380,9 @@ export function getDashboardStyles() {
       grid-template-columns: repeat(2, minmax(0, 1fr));
       align-items: start;
     }
+    .selection-sidebar .advanced-actions-content {
+      grid-template-columns: 1fr;
+    }
     .backfill-panel {
       padding: 20px;
     }
@@ -387,6 +390,9 @@ export function getDashboardStyles() {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 12px;
+    }
+    .selection-sidebar .backfill-panel-fields {
+      grid-template-columns: 1fr;
     }
     .backfill-panel-fields label,
     .cookie-field {

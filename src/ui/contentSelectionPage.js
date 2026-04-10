@@ -268,94 +268,94 @@ export function generateContentSelectionPageHtml(env, dateStr, allData, dataCate
 
   const bodyContent = `
     <main class="workspace-shell workspace-shell-content">
-      <form class="workspace-form" action="/genAIContent" method="POST">
+      <form id="contentSelectionForm" class="workspace-form" action="/genAIContent" method="POST">
         <input type="hidden" name="date" value="${safeDateStr}">
         <div data-selection-hidden-inputs hidden></div>
-
-        <header class="workspace-status-band card">
-          <div class="workspace-status-top">
-            <div class="workspace-header-copy">
-              <p class="workspace-kicker">AI Insight Daily</p>
-              <h1>${safeDisplayDate} 内容工作台</h1>
-              <p class="workspace-intro">先筛选内容，再进入日报或播客生成流程。</p>
-            </div>
-            <div class="workspace-primary-actions">
-              <button type="button" class="button button-secondary" data-fetch-all>抓取最新数据</button>
-              <button type="button" class="button button-ghost" data-toggle-advanced-actions aria-expanded="false">高级操作</button>
-              <button type="submit" class="button button-primary">生成 AI 日报</button>
-            </div>
-          </div>
-          <div class="workspace-status-metrics">
-              <span class="chip status-chip">发布日期 ${safeDisplayDate}</span>
-              <span class="chip status-chip">共 ${totalItems} 条候选内容</span>
-              <span class="chip status-chip" data-selected-count>已选 0 条</span>
-          </div>
-        </header>
-
-        <section class="workspace-toolbar workspace-toolbar-card card">
-          <div class="workspace-toolbar-left">${categoryNav}</div>
-          <div class="workspace-toolbar-right">
-            <div class="batch-size-group" aria-label="每批加载条数">${batchSizeControls}</div>
-          </div>
-        </section>
-
-        <div class="workspace-grid">
-          <section class="workspace-main workspace-content-column">
-            ${panels}
-          </section>
-
-          <aside class="selection-sidebar workspace-aside-column" aria-label="内容侧栏">
-            <section class="selection-summary-card workspace-aside-section card" aria-label="已选内容摘要">
-              <div class="selection-sidebar-header">
-                <h2>已选摘要</h2>
-                <p data-sidebar-status>还没有选择内容</p>
-              </div>
-              <div class="selection-summary-stats" data-selection-summary-stats></div>
-              <div class="selection-sidebar-body selection-recent-list" data-selection-summary-list>
-                <p class="selection-empty">从左侧内容池选择条目后，这里会实时显示结果。</p>
-              </div>
-              <div class="selection-sidebar-footer">
-                <button type="button" class="button button-ghost" data-clear-selection>清空已选</button>
-                <button type="submit" class="button button-primary">开始生成</button>
-              </div>
-            </section>
-
-            <section class="selection-archive-card workspace-aside-section card" aria-label="内容归档">
-              <div class="selection-sidebar-archive" data-selection-archive>
-                <h2>内容归档</h2>
-                <div class="selection-sidebar-archive-list">
-                  ${archiveLinksHtml}
-                </div>
-              </div>
-            </section>
-          </aside>
-        </div>
-
-        <button type="button" class="selection-summary-mobile button button-primary" data-mobile-summary>
-          已选 0 条
-        </button>
-
-        <button
-          type="button"
-          class="back-to-top-button button button-secondary"
-          data-back-to-top
-          aria-label="回到顶部"
-          hidden
-        >
-          回到顶部
-        </button>
       </form>
 
-      <section class="advanced-actions-panel workspace-aside-section card" data-advanced-actions-panel hidden>
-        <div class="advanced-actions-header">
-          <h2>高级操作</h2>
-          <p>Cookie 设置与 Backfill 默认收起，避免干扰主流程。</p>
+      <header class="workspace-status-band card">
+        <div class="workspace-status-top">
+          <div class="workspace-header-copy">
+            <p class="workspace-kicker">AI Insight Daily</p>
+            <h1>${safeDisplayDate} 内容工作台</h1>
+            <p class="workspace-intro">先筛选内容，再进入日报或播客生成流程。</p>
+          </div>
+          <div class="workspace-primary-actions">
+            <button type="button" class="button button-secondary" data-fetch-all>抓取最新数据</button>
+            <button type="button" class="button button-ghost" data-toggle-advanced-actions aria-expanded="false">高级操作</button>
+            <button type="submit" form="contentSelectionForm" class="button button-primary">生成 AI 日报</button>
+          </div>
         </div>
-        <div class="advanced-actions-content">
-          ${cookiePanelHtml}
-          ${backfillPanelHtml}
+        <div class="workspace-status-metrics">
+            <span class="chip status-chip">发布日期 ${safeDisplayDate}</span>
+            <span class="chip status-chip">共 ${totalItems} 条候选内容</span>
+            <span class="chip status-chip" data-selected-count>已选 0 条</span>
+        </div>
+      </header>
+
+      <section class="workspace-toolbar workspace-toolbar-card card">
+        <div class="workspace-toolbar-left">${categoryNav}</div>
+        <div class="workspace-toolbar-right">
+          <div class="batch-size-group" aria-label="每批加载条数">${batchSizeControls}</div>
         </div>
       </section>
+
+      <div class="workspace-grid">
+        <section class="workspace-main workspace-content-column">
+          ${panels}
+        </section>
+
+        <aside class="selection-sidebar workspace-aside-column" aria-label="内容侧栏">
+          <section class="selection-summary-card workspace-aside-section card" aria-label="已选内容摘要">
+            <div class="selection-sidebar-header">
+              <h2>已选摘要</h2>
+              <p data-sidebar-status>还没有选择内容</p>
+            </div>
+            <div class="selection-summary-stats" data-selection-summary-stats></div>
+            <div class="selection-sidebar-body selection-recent-list" data-selection-summary-list>
+              <p class="selection-empty">从左侧内容池选择条目后，这里会实时显示结果。</p>
+            </div>
+            <div class="selection-sidebar-footer">
+              <button type="button" class="button button-ghost" data-clear-selection>清空已选</button>
+              <button type="submit" form="contentSelectionForm" class="button button-primary">开始生成</button>
+            </div>
+          </section>
+
+          <section class="selection-archive-card workspace-aside-section card" aria-label="内容归档">
+            <div class="selection-sidebar-archive" data-selection-archive>
+              <h2>内容归档</h2>
+              <div class="selection-sidebar-archive-list">
+                ${archiveLinksHtml}
+              </div>
+            </div>
+          </section>
+
+          <section class="advanced-actions-panel workspace-aside-section card" data-advanced-actions-panel hidden>
+            <div class="advanced-actions-header">
+              <h2>高级操作</h2>
+              <p>Cookie 设置与 Backfill 默认收起，避免干扰主流程。</p>
+            </div>
+            <div class="advanced-actions-content">
+              ${cookiePanelHtml}
+              ${backfillPanelHtml}
+            </div>
+          </section>
+        </aside>
+      </div>
+
+      <button type="button" class="selection-summary-mobile button button-primary" data-mobile-summary>
+        已选 0 条
+      </button>
+
+      <button
+        type="button"
+        class="back-to-top-button button button-secondary"
+        data-back-to-top
+        aria-label="回到顶部"
+        hidden
+      >
+        回到顶部
+      </button>
     </main>`;
 
   const inlineScript = `
