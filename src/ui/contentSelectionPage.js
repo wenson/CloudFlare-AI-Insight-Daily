@@ -842,7 +842,7 @@ export function generateContentSelectionPageHtml(env, dateStr, allData, dataCate
             (summary.failedDays ?? 0) +
             ' 天失败';
 
-          if (!response.ok || payload.success !== true) {
+          if (!response.ok) {
             const message = payload.message || '补数遇到问题';
             showToast(message, 'error');
             if (backfillResultNode) {
