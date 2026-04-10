@@ -41,7 +41,7 @@ function normalizeEntry(entry) {
 }
 
 export function getFoloWebhookFeedRegistry(env = process.env) {
-  const rawMap = env?.FOLO_WEBHOOK_FEED_MAP ?? '';
+  const rawMap = (env?.FOLO_WEBHOOK_FEED_MAP ?? '').trim();
   if (!rawMap) {
     return [];
   }
@@ -57,7 +57,16 @@ export function getFoloWebhookFeedRegistry(env = process.env) {
     throw new Error('FOLO_WEBHOOK_FEED_MAP must be an array');
   }
 
-  return parsed.map(normalizeEntry);
+  const normalized = [];
+  for (let i = 0; i < parsed.length; i += 1) {
+    try {
+      normalized.push(normalizeEntry(parsed[i]));
+    } catch (error) {
+      throw new Error(`Error parsing FOLO_WEBHOOK_FEED_MAP entry ${i}: ${error.message}`);
+    }
+  }
+
+  return normalized;
 }
 
 export function extractWebhookFeedIdentity(payload = {}) {
@@ -98,6 +107,10 @@ export function extractWebhookFeedIdentity(payload = {}) {
 }
 
 export function matchFoloWebhookFeed(registry, identity = {}) {
+  if (!Array.isArray(registry)) {
+    return undefined;
+  }
+
   const feedId = normalizeOptionalString(identity.feedId);
   const feedUrl = normalizeOptionalString(identity.feedUrl);
   const siteUrl = normalizeOptionalString(identity.siteUrl);

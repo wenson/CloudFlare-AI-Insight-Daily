@@ -134,3 +134,70 @@ test('getFoloWebhookFeedRegistry rejects invalid JSON and unknown sourceType', (
     /Invalid sourceType/,
   );
 });
+
+test('getFoloWebhookFeedRegistry rejects non-array JSON', () => {
+  assert.throws(
+    () => getFoloWebhookFeedRegistry(createEnv({ FOLO_WEBHOOK_FEED_MAP: JSON.stringify({ foo: 'bar' }) })),
+    /FOLO_WEBHOOK_FEED_MAP must be an array/,
+  );
+});
+
+test('getFoloWebhookFeedRegistry rejects entries missing feed identifiers with context', () => {
+  assert.throws(
+    () => getFoloWebhookFeedRegistry(createEnv({
+      FOLO_WEBHOOK_FEED_MAP: JSON.stringify([{ sourceKey: 'bad', sourceType: 'news' }]),
+    })),
+    /entry 0/,
+  );
+});
+
+test('getFoloWebhookFeedRegistry treats whitespace-only config as empty', () => {
+  const registry = getFoloWebhookFeedRegistry({ FOLO_WEBHOOK_FEED_MAP: '   ' });
+  assert.deepEqual(registry, []);
+});
+
+test('matchFoloWebhookFeed matches by siteUrl and tolerates undefined registry', () => {
+  const registry = getFoloWebhookFeedRegistry(createEnv());
+  const match = matchFoloWebhookFeed(registry, {
+    feedId: '',
+    feedUrl: '',
+    siteUrl: 'https://huggingface.co/papers',
+  });
+
+  assert.equal(match.sourceKey, 'paper-hf');
+  assert.equal(match.sourceType, 'paper');
+  assert.equal(matchFoloWebhookFeed(undefined, { feedId: 'feed-hf' }), undefined);
+});
+
+test('extractWebhookFeedIdentity falls back to feedUrl then siteUrl when ids missing', () => {
+  const fromUrl = extractWebhookFeedIdentity({
+    entry: {},
+    feed: {
+      url: 'https://example.com/feed.xml',
+      siteUrl: 'https://example.com',
+    },
+  });
+
+  assert.deepEqual(fromUrl, {
+    matchKey: 'feedUrl',
+    matchValue: 'https://example.com/feed.xml',
+    feedId: '',
+    feedUrl: 'https://example.com/feed.xml',
+    siteUrl: 'https://example.com',
+  });
+
+  const fromSite = extractWebhookFeedIdentity({
+    entry: {},
+    feed: {
+      siteUrl: 'https://example.com',
+    },
+  });
+
+  assert.deepEqual(fromSite, {
+    matchKey: 'siteUrl',
+    matchValue: 'https://example.com',
+    feedId: '',
+    feedUrl: '',
+    siteUrl: 'https://example.com',
+  });
+});
