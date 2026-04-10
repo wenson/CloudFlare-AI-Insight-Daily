@@ -170,17 +170,6 @@ export async function runSourceItemIngestion(env, options) {
     }
 
     if (category) {
-      if (!Object.hasOwn(dataSources, category)) {
-        return buildErrorResponse({
-          message: `Unknown category: ${category}`,
-          status: 400,
-          counts,
-          date: requestedDate,
-          mode,
-          errors: [],
-        });
-      }
-
       const { data, errors: fetchErrors } = await fetchDataByCategory(env, category, foloCookie);
       counts[category] = data.length;
 
@@ -251,7 +240,18 @@ export async function runSourceItemIngestion(env, options) {
       });
     }
 
+    const sourceTypes = Object.keys(dataSources);
     const { data: allUnifiedData, errors: unifiedErrors } = await fetchAllData(env, foloCookie);
+    const allSourceRecords = [];
+    for (const sourceType of sourceTypes) {
+      const entries = allUnifiedData[sourceType] || [];
+      counts[sourceType] = entries.length;
+      if (entries.length > 0) {
+        const records = entries.map((item) => buildSourceItemRecord(item, requestedDate));
+        allSourceRecords.push(...records);
+      }
+    }
+
     if (unifiedErrors.length > 0) {
       return buildErrorResponse({
         message: 'Failed to fetch one or more data sources.',
@@ -261,16 +261,6 @@ export async function runSourceItemIngestion(env, options) {
         mode,
         errors: unifiedErrors,
       });
-    }
-
-    const allSourceRecords = [];
-    for (const sourceType of Object.keys(dataSources)) {
-      const entries = allUnifiedData[sourceType] || [];
-      counts[sourceType] = entries.length;
-      if (entries.length > 0) {
-        const records = entries.map((item) => buildSourceItemRecord(item, requestedDate));
-        allSourceRecords.push(...records);
-      }
     }
 
     if (allSourceRecords.length > 0) {

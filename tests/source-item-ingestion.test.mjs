@@ -162,3 +162,61 @@ test('runSourceItemIngestion stores successful categories and reports failed cat
     setFetchDate(previousFetchDate);
   }
 });
+
+test('enumerateDateRange rejects non-YYYY-MM-DD format', () => {
+  assert.throws(() => enumerateDateRange('2026/04/08', '2026-04-10'), /Invalid startDate/);
+});
+
+test('enumerateDateRange rejects ranges longer than 31 days', () => {
+  assert.throws(() => enumerateDateRange('2026-01-01', '2026-02-05'), /cannot exceed/);
+});
+
+test('runSourceItemIngestion all-category failure without partial success still reports fetched counts', async () => {
+  const originalFetch = global.fetch;
+  const previousFetchDate = getFetchDate();
+  const env = createEnv();
+
+  global.fetch = async (_url, init = {}) => {
+    const { listId } = JSON.parse(init.body || '{}');
+
+    if (listId === 'redditList') {
+      return new Response('Unauthorized', {
+        status: 401,
+        statusText: 'Unauthorized',
+      });
+    }
+
+    const entryByListId = {
+      newsList: createEntry('news-1', '2026-04-10T08:00:00.000Z', 'News item'),
+      papersList: createEntry('paper-1', '2026-04-10T09:00:00.000Z', 'Paper item'),
+      twitterList: createEntry('tweet-1', '2026-04-10T10:00:00.000Z', 'Tweet item'),
+    };
+
+    return new Response(JSON.stringify({
+      data: entryByListId[listId] ? [entryByListId[listId]] : [],
+    }), {
+      headers: { 'Content-Type': 'application/json' },
+    });
+  };
+
+  try {
+    setFetchDate('2026-04-01');
+    const result = await runSourceItemIngestion(env, {
+      date: '2026-04-10',
+      mode: 'scheduled',
+      foloCookie: 'secret-cookie',
+      allowPartialSuccess: false,
+    });
+
+    assert.equal(result.success, false);
+    assert.equal(result.status, 502);
+    assert.equal(result.counts.news, 1);
+    assert.equal(result.counts.paper, 1);
+    assert.equal(result.counts.socialMedia, 1);
+    assert.match(result.errors.join('\n'), /Unauthorized/);
+    assert.equal(env.DB.state.batches.length, 0);
+  } finally {
+    global.fetch = originalFetch;
+    setFetchDate(previousFetchDate);
+  }
+});

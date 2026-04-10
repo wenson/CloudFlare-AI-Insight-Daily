@@ -24,16 +24,26 @@ export async function handleWriteData(request, env) {
       allowPartialSuccess: false,
     });
 
-    const countEntries = Object.entries(ingestionResult.counts ?? {});
-    const countPayload = Object.fromEntries(
-      countEntries.map(([key, value]) => [`${key}ItemCount`, value])
-    );
-
     const responseBody = {
       success: ingestionResult.success,
       message: ingestionResult.message,
-      ...countPayload,
     };
+
+    const hasCategory = Boolean(category);
+    const isUnknownCategoryError = hasCategory && ingestionResult.status === 400 && /Unknown category/i.test(ingestionResult.message ?? '');
+
+    if (hasCategory && !isUnknownCategoryError) {
+      const categoryCount = ingestionResult.counts?.[category];
+      if (typeof categoryCount === 'number') {
+        responseBody[`${category}ItemCount`] = categoryCount;
+      }
+    } else if (!hasCategory) {
+      const countEntries = Object.entries(ingestionResult.counts ?? {});
+      const countPayload = Object.fromEntries(
+        countEntries.map(([key, value]) => [`${key}ItemCount`, value])
+      );
+      Object.assign(responseBody, countPayload);
+    }
 
     if (ingestionResult.errors?.length) {
       responseBody.errors = ingestionResult.errors;
