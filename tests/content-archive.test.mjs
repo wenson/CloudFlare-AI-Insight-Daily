@@ -53,6 +53,13 @@ test('/contentArchive renders archive days and links back into date-scoped conte
   assert.equal(response.status, 200);
   assert.match(env.DB.state.sql, /FROM source_items/);
   assert.match(html, /历史内容归档/);
+  assert.match(html, /workspace-status-band/);
+  assert.match(html, /workspace-shell-archive/);
+  assert.match(html, /workspace-status-top/);
+  assert.match(html, /archive-list/);
+  assert.match(html, /archive-card card/);
+  assert.match(html, /返回今日内容/);
+  assert.match(html, /按发布日期浏览历史原始内容/);
   assert.match(html, /2026\/4\/10/);
   assert.match(html, /共 12 条内容/);
   assert.match(html, /新闻 5/);

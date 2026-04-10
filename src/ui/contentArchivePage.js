@@ -33,23 +33,23 @@ export function generateContentArchivePageHtml(rows = []) {
     : '<div class="empty-panel card"><h3>暂时还没有历史内容</h3><p>先抓取数据后，这里会按发布日期自动生成归档列表。</p></div>';
 
   const bodyContent = `
-    <main class="workspace-shell">
-      <header class="workspace-header card">
-        <div class="workspace-header-copy">
-          <p class="workspace-kicker">AI Insight Daily</p>
-          <h1>历史内容归档</h1>
-          <div class="workspace-meta">
-            <span class="chip">按发布日期浏览历史原始内容</span>
-            <span class="chip">点击后进入当天内容页</span>
+    <main class="workspace-shell workspace-shell-archive">
+      <header class="workspace-status-band card">
+        <div class="workspace-status-top">
+          <div class="workspace-header-copy">
+            <p class="workspace-kicker">AI Insight Daily</p>
+            <h1>历史内容归档</h1>
+            <div class="workspace-meta">
+              <span class="chip">按发布日期浏览历史原始内容</span>
+              <span class="chip">点击后进入当天内容页</span>
+            </div>
+          </div>
+          <div class="workspace-primary-actions">
+            <a href="/getContentHtml" class="button button-secondary">返回今日内容</a>
           </div>
         </div>
-        <div class="workspace-actions">
-          <a href="/getContentHtml" class="button button-secondary">返回今日内容</a>
-        </div>
       </header>
-      <section class="archive-list">
-        ${cards}
-      </section>
+      <section class="archive-list">${cards}</section>
     </main>`;
 
   return renderDashboardPage({
