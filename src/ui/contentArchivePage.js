@@ -1,4 +1,5 @@
-import { escapeHtml, formatDateToChinese } from '../helpers.js';
+import { formatDateToChinese } from '../utils/date.js';
+import { escapeHtml } from '../utils/html.js';
 import { renderDashboardPage } from './pageShell.js';
 
 function renderArchiveCard(row) {

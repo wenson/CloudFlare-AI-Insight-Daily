@@ -1,4 +1,6 @@
-import { getRandomUserAgent, sleep, isDateWithinLastDays, stripHtml, formatDateToChineseWithTime, escapeHtml } from '../helpers.js';
+import { isDateWithinLastDays, formatDateToChineseWithTime } from '../utils/date.js';
+import { escapeHtml, stripHtml } from '../utils/html.js';
+import { getRandomUserAgent, sleep } from '../utils/network.js';
 
 const XinZhiYuanDataSource = {
     fetch: async (env, foloCookie) => {

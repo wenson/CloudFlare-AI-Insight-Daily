@@ -1,4 +1,5 @@
-import { formatRssDate, stripHtml } from '../helpers.js';
+import { formatRssDate } from '../utils/date.js';
+import { stripHtml } from '../utils/html.js';
 import { listDailyReports } from '../d1.js';
 
 export async function handleRss(request, env) {

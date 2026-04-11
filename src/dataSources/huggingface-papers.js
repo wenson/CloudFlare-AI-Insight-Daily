@@ -1,5 +1,8 @@
 // src/dataSources/huggingface-papers.js
-import { getRandomUserAgent, sleep, isDateWithinLastDays, stripHtml, removeMarkdownCodeBlock, formatDateToChineseWithTime, escapeHtml} from '../helpers.js';
+import { isDateWithinLastDays, formatDateToChineseWithTime } from '../utils/date.js';
+import { escapeHtml, stripHtml } from '../utils/html.js';
+import { buildCurlCommand, getRandomUserAgent, sleep } from '../utils/network.js';
+import { removeMarkdownCodeBlock } from '../utils/text.js';
 import { callChatAPI } from '../chatapi.js';
 
 const PapersDataSource = {

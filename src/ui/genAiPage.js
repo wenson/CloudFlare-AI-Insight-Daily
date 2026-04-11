@@ -1,4 +1,6 @@
-import { formatDateToChinese, convertEnglishQuotesToChinese, replaceImageProxy } from '../helpers.js';
+import { formatDateToChinese } from '../utils/date.js';
+import { replaceImageProxy } from '../utils/html.js';
+import { convertEnglishQuotesToChinese } from '../utils/text.js';
 import { marked } from '../marked.esm.js';
 import { renderDashboardPage } from './pageShell.js';
 

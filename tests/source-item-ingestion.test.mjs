@@ -224,3 +224,40 @@ test('runSourceItemIngestion all-category failure without partial success still 
     setFetchDate(previousFetchDate);
   }
 });
+
+test('runSourceItemIngestion prefers env SOURCE_ITEM_FETCH_DATE over shared helper state when date is omitted', async () => {
+  const originalFetch = global.fetch;
+  const previousFetchDate = getFetchDate();
+  const env = createEnv({
+    SOURCE_ITEM_FETCH_DATE: '2026-04-10',
+    HGPAPERS_LIST_ID: '',
+    TWITTER_LIST_ID: '',
+    REDDIT_LIST_ID: '',
+  });
+  const requestBodies = [];
+
+  global.fetch = async (_url, init = {}) => {
+    requestBodies.push(JSON.parse(init.body || '{}'));
+    return new Response(JSON.stringify({
+      data: [createEntry('news-1', '2026-04-10T08:00:00.000Z', 'News item')],
+    }), {
+      headers: { 'Content-Type': 'application/json' },
+    });
+  };
+
+  try {
+    setFetchDate('2026-04-01');
+    const result = await runSourceItemIngestion(env, {
+      mode: 'scheduled',
+      foloCookie: 'secret-cookie',
+      requireFoloCookie: true,
+    });
+
+    assert.equal(result.success, true);
+    assert.equal(result.date, '2026-04-10');
+    assert.equal(requestBodies[0].publishedBefore, '2026-04-09T16:00:00.000Z');
+  } finally {
+    global.fetch = originalFetch;
+    setFetchDate(previousFetchDate);
+  }
+});

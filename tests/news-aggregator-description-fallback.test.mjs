@@ -29,7 +29,6 @@ function createDb() {
 
 test('handleWriteData falls back to upstream description when news content is missing', async () => {
   const originalFetch = global.fetch;
-  const previousFetchDate = getFetchDate();
   global.fetch = async () => new Response(JSON.stringify({
     data: [
       {
@@ -69,11 +68,10 @@ test('handleWriteData falls back to upstream description when news content is mi
   const request = new Request('https://example.com/writeData', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ category: 'news', foloCookie: 'valid-cookie' }),
+    body: JSON.stringify({ category: 'news', foloCookie: 'valid-cookie', date: '2026-04-08' }),
   });
 
   try {
-    setFetchDate('2026-04-08');
     const response = await handleWriteData(request, env);
     const body = await response.json();
 
@@ -87,7 +85,6 @@ test('handleWriteData falls back to upstream description when news content is mi
     assert.equal(db.state.batches[0][0].args[9], 'Summary from upstream description.');
     assert.equal(db.state.batches[0][0].args[10], '<p>Summary from upstream description.</p>');
   } finally {
-    setFetchDate(previousFetchDate);
     global.fetch = originalFetch;
   }
 });

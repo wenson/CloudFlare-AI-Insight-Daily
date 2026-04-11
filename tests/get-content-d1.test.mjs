@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { handleGetContent } from '../src/handlers/getContent.js';
 import { handleGetContentHtml } from '../src/handlers/getContentHtml.js';
 import { handleGetContentPage } from '../src/handlers/getContentPage.js';
+import { getFetchDate, setFetchDate } from '../src/helpers.js';
 
 function createDb(resolver = () => []) {
   const state = {
@@ -225,6 +226,34 @@ test('/getContentHtml reads source items from D1 and renders grouped counts/cont
   assert.match(html, /发布日期 2026\/4\/9/);
   assert.match(html, /IntersectionObserver/);
   assert.match(html, /\/getContentPage/);
+});
+
+test('/getContentHtml does not mutate shared fetchDate state', async () => {
+  const previousFetchDate = getFetchDate();
+  const env = {
+    FOLO_FILTER_DAYS: '2',
+    FOLO_COOKIE_KV_KEY: 'folo_cookie',
+    DATA_KV: {
+      async get() {
+        return JSON.stringify([]);
+      },
+    },
+    DB: createDb(() => []),
+  };
+
+  try {
+    setFetchDate('1999-01-01');
+    const response = await handleGetContentHtml(
+      new Request('https://example.com/getContentHtml?date=2026-04-09'),
+      env,
+      createCategories(),
+    );
+
+    assert.equal(response.status, 200);
+    assert.equal(getFetchDate(), '1999-01-01');
+  } finally {
+    setFetchDate(previousFetchDate);
+  }
 });
 
 test('/getContentHtml can render configured future source_type groups from D1', async () => {

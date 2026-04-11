@@ -1,5 +1,7 @@
 // src/handlers/genAIContent.js
-import { getISODate, escapeHtml, stripHtml, removeMarkdownCodeBlock, formatDateToChinese, convertEnglishQuotesToChinese, formatMarkdownText } from '../helpers.js';
+import { getISODate, formatDateToChinese } from '../utils/date.js';
+import { escapeHtml, stripHtml } from '../utils/html.js';
+import { removeMarkdownCodeBlock, convertEnglishQuotesToChinese, formatMarkdownText } from '../utils/text.js';
 import { callChatAPI, callChatAPIStream } from '../chatapi.js';
 import { generateGenAiPageHtml } from '../ui/genAiPage.js';
 import { getSystemPromptSummarizationStepOne } from "../prompt/summarizationPromptStepZero";

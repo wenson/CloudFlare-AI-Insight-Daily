@@ -1,7 +1,7 @@
 import { dataSources, fetchAllData, fetchDataByCategory } from '../dataFetchers.js';
 import { upsertSourceItems } from '../d1.js';
 import { buildSourceItemRecord } from '../sourceItems.js';
-import { getFetchDate } from '../helpers.js';
+import { getSourceItemFetchDate } from '../utils/date.js';
 
 export const MAX_BACKFILL_DAYS = 31;
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
@@ -145,7 +145,7 @@ export async function runSourceItemIngestion(env, options) {
     allowPartialSuccess = false,
   } = options;
   const counts = createCountsTemplate();
-  const requestedDate = date ?? getFetchDate() ?? formatDateAsString(new Date());
+  const requestedDate = date ?? getSourceItemFetchDate(env, formatDateAsString(new Date()));
   const fetchEnv = { ...env, SOURCE_ITEM_FETCH_DATE: requestedDate };
 
   try {

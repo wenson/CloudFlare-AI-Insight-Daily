@@ -1,4 +1,6 @@
-import { getRandomUserAgent, sleep, isDateWithinLastDays, stripHtml, formatDateToChineseWithTime, escapeHtml, buildCurlCommand, getSourceItemFetchDate} from '../helpers';
+import { getSourceItemFetchDate, isDateWithinLastDays, formatDateToChineseWithTime } from '../utils/date.js';
+import { escapeHtml, stripHtml } from '../utils/html.js';
+import { buildCurlCommand, getRandomUserAgent, sleep } from '../utils/network.js';
 
 function buildSourceMeta(entry) {
     const source = entry?.entries || {};

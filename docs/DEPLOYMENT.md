@@ -105,6 +105,17 @@ npx wrangler secret put OPENAI_API_KEY
 npx wrangler dev
 ```
 
+如果你在改动抓取、页面渲染、D1 读写或 AI 生成链路，建议先跑一遍当前仓库的全量回归测试：
+
+```bash
+node --loader ./tests/extension-loader.mjs --experimental-default-type=module --test tests/*.test.mjs
+```
+
+期望结果：
+
+- 所有测试通过
+- 输出里 `fail` 为 `0`
+
 默认建议先访问：
 
 - `/login`
@@ -140,6 +151,11 @@ npx wrangler deploy --dry-run
 5. 选择内容生成 `/genAIContent`
 6. 打开 `/rss`，确认同一天的摘要已自动出现
 7. 再触发 `/genAIPodcastScript` 与 `/genAIDailyAnalysis`
+
+补充说明：
+
+- 仓库已提供 GitHub Actions 测试工作流，会在 `push` 和 `pull_request` 时自动执行同一条 Node 测试命令
+- 如果你本地跑不过测试，先不要直接部署
 
 ### 8. 当前必需变量清单
 

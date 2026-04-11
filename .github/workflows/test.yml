@@ -1,0 +1,30 @@
+name: Test
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  node-tests:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Show tool versions
+        run: |
+          node --version
+
+      - name: Run test suite
+        run: |
+          node --loader ./tests/extension-loader.mjs --experimental-default-type=module --test tests/*.test.mjs

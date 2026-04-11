@@ -1,7 +1,9 @@
-import { getRandomUserAgent, sleep, isDateWithinLastDays, stripHtml, formatDateToChineseWithTime, escapeHtml, buildCurlCommand, getFetchDate, getSourceItemFetchDate } from '../helpers';
+import { getSourceItemFetchDate, isDateWithinLastDays, formatDateToChineseWithTime } from '../utils/date.js';
+import { escapeHtml, stripHtml } from '../utils/html.js';
+import { buildCurlCommand, getRandomUserAgent, sleep } from '../utils/network.js';
 
 function getPublishedBeforeBoundary(filterDays, referenceDate) {
-    const targetDate = referenceDate ?? getFetchDate();
+    const targetDate = referenceDate;
     const [year, month, day] = targetDate.split('-').map(Number);
     const utcBoundary = new Date(Date.UTC(year, month - 1, day - (filterDays - 1), -8, 0, 0, 0));
     return utcBoundary.toISOString();

@@ -1,4 +1,4 @@
-import { escapeHtml } from '../helpers.js';
+import { escapeHtml } from '../utils/html.js';
 import { listSourceItemArchiveDays } from '../d1.js';
 import { generateContentArchivePageHtml } from '../ui/contentArchivePage.js';
 

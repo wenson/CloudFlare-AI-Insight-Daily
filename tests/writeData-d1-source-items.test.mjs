@@ -38,7 +38,6 @@ function createDb() {
 
 test('handleWriteData stores fetched category items through a D1 batch upsert and does not write content to KV', async () => {
   const originalFetch = global.fetch;
-  const previousFetchDate = getFetchDate();
   global.fetch = async () => new Response(JSON.stringify({
     data: [
       {
@@ -77,11 +76,10 @@ test('handleWriteData stores fetched category items through a D1 batch upsert an
   const request = new Request('https://example.com/writeData', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ category: 'news', foloCookie: 'valid-cookie' }),
+    body: JSON.stringify({ category: 'news', foloCookie: 'valid-cookie', date: '2026-04-08' }),
   });
 
   try {
-    setFetchDate('2026-04-08');
     const response = await handleWriteData(request, env);
     const body = await response.json();
 
@@ -95,7 +93,6 @@ test('handleWriteData stores fetched category items through a D1 batch upsert an
     assert.match(env.DB.state.batches[0][0].sql, /INSERT INTO source_items/);
     assert.equal(env.DB.state.batches[0][0].args[2], 'news-1');
   } finally {
-    setFetchDate(previousFetchDate);
     global.fetch = originalFetch;
   }
 });
@@ -120,9 +117,65 @@ test('handleWriteData returns a clear 500 when D1 DB binding is missing for know
   assert.match(body.message, /required/i);
 });
 
-test('handleWriteData all-category path writes one flattened D1 batch and keeps per-category counts', async () => {
+test('handleWriteData uses request body date instead of shared helper state', async () => {
   const originalFetch = global.fetch;
   const previousFetchDate = getFetchDate();
+  global.fetch = async () => new Response(JSON.stringify({
+    data: [
+      {
+        entries: {
+          id: 'news-dated-1',
+          url: 'https://example.com/news/date/1',
+          title: 'Dated item',
+          content: '<p>dated content</p>',
+          publishedAt: '2026-04-08T08:00:00.000Z',
+          author: 'author-1',
+        },
+        feeds: {
+          title: 'Feed-1',
+        },
+      },
+    ],
+  }), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' },
+  });
+
+  const env = {
+    DATA_KV: {
+      async put() {},
+    },
+    DB: createDb(),
+    FOLO_DATA_API: 'https://api.follow.is/entries',
+    FOLO_FILTER_DAYS: '1',
+    NEWS_AGGREGATOR_LIST_ID: 'configured-list-id',
+    NEWS_AGGREGATOR_FETCH_PAGES: '1',
+  };
+
+  const request = new Request('https://example.com/writeData', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ category: 'news', foloCookie: 'valid-cookie', date: '2026-04-08' }),
+  });
+
+  try {
+    setFetchDate('2026-04-01');
+    const response = await handleWriteData(request, env);
+    const body = await response.json();
+
+    assert.equal(response.status, 200);
+    assert.equal(body.success, true);
+    assert.equal(env.DB.state.batches.length, 1);
+    assert.equal(env.DB.state.batches[0][0].args[20], '2026-04-08');
+    assert.equal(env.DB.state.batches[0][0].args[21], '2026-04-08');
+  } finally {
+    setFetchDate(previousFetchDate);
+    global.fetch = originalFetch;
+  }
+});
+
+test('handleWriteData all-category path writes one flattened D1 batch and keeps per-category counts', async () => {
+  const originalFetch = global.fetch;
   global.fetch = async (_url, init = {}) => {
     const parsedBody = JSON.parse(init.body ?? '{}');
     const { listId } = parsedBody;
@@ -204,11 +257,10 @@ test('handleWriteData all-category path writes one flattened D1 batch and keeps 
   const request = new Request('https://example.com/writeData', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ foloCookie: 'valid-cookie' }),
+    body: JSON.stringify({ foloCookie: 'valid-cookie', date: '2026-04-08' }),
   });
 
   try {
-    setFetchDate('2026-04-08');
     const response = await handleWriteData(request, env);
     const body = await response.json();
 
@@ -220,14 +272,12 @@ test('handleWriteData all-category path writes one flattened D1 batch and keeps 
     assert.equal(env.DB.state.batches.length, 1);
     assert.equal(env.DB.state.batches[0].length, 4);
   } finally {
-    setFetchDate(previousFetchDate);
     global.fetch = originalFetch;
   }
 });
 
 test('handleWriteData surfaces unexpected ingestion failures as 500', async () => {
   const originalFetch = global.fetch;
-  const previousFetchDate = getFetchDate();
 
   global.fetch = async () => new Response(JSON.stringify({
     data: [
@@ -269,11 +319,10 @@ test('handleWriteData surfaces unexpected ingestion failures as 500', async () =
   const request = new Request('https://example.com/writeData', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ foloCookie: 'valid-cookie' }),
+    body: JSON.stringify({ foloCookie: 'valid-cookie', date: '2026-04-08' }),
   });
 
   try {
-    setFetchDate('2026-04-08');
     const response = await handleWriteData(request, env);
     const body = await response.json();
 
@@ -284,7 +333,6 @@ test('handleWriteData surfaces unexpected ingestion failures as 500', async () =
     assert.match(body.details, /db batch boom/);
     assert.equal(body.newsItemCount, undefined);
   } finally {
-    setFetchDate(previousFetchDate);
     global.fetch = originalFetch;
   }
 });

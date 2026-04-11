@@ -128,7 +128,7 @@ test('handleWriteData reports upstream unauthorized fetch failures instead of si
   const request = new Request('https://example.com/writeData', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ category: 'news', foloCookie: 'expired-cookie' }),
+    body: JSON.stringify({ category: 'news', foloCookie: 'expired-cookie', date: '2026-04-08' }),
   });
 
   try {
@@ -202,7 +202,7 @@ test('handleWriteData skips entries with invalid publishedAt instead of failing 
   const request = new Request('https://example.com/writeData', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ category: 'news', foloCookie: 'valid-cookie' }),
+    body: JSON.stringify({ category: 'news', foloCookie: 'valid-cookie', date: '2026-04-08' }),
   });
 
   try {

@@ -1,4 +1,6 @@
-import { getISODate, escapeHtml, formatDateToChinese, convertEnglishQuotesToChinese} from '../helpers.js';
+import { getISODate, formatDateToChinese } from '../utils/date.js';
+import { escapeHtml } from '../utils/html.js';
+import { convertEnglishQuotesToChinese } from '../utils/text.js';
 import { generateGenAiPageHtml } from '../ui/genAiPage.js';
 import { insertFoot } from '../foot.js';
 import { insertAd } from '../ad.js';

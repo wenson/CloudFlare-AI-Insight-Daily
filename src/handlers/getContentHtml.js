@@ -1,5 +1,6 @@
 // src/handlers/getContentHtml.js
-import { getISODate, escapeHtml, setFetchDate } from '../helpers.js';
+import { getISODate } from '../utils/date.js';
+import { escapeHtml } from '../utils/html.js';
 import {
   countSourceItemsByPublishedWindowGroupedByType,
   listSourceItemsByPublishedWindowAndType,
@@ -20,7 +21,6 @@ export async function handleGetContentHtml(request, env, dataCategories) {
   const dateStr = dateParam ? dateParam : getISODate();
   const activeCategory = normalizeActiveCategory(url.searchParams.get('category'), dataCategories);
   const pageSize = normalizeContentBatchSize(url.searchParams.get('pageSize'));
-  setFetchDate(dateStr);
   console.log(`Getting HTML content for date: ${dateStr}`);
 
   try {

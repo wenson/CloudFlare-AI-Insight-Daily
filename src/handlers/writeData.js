@@ -1,10 +1,9 @@
 // src/handlers/writeData.js
-import { getISODate, getFetchDate } from '../helpers.js';
+import { getISODate } from '../utils/date.js';
 import { runSourceItemIngestion } from '../services/sourceItemIngestion.js';
 
 export async function handleWriteData(request, env) {
-  const dateParam = getFetchDate();
-  const dateStr = dateParam ? dateParam : getISODate();
+  let dateStr = env?.SOURCE_ITEM_FETCH_DATE || getISODate();
   let category;
   let foloCookie = null;
 
@@ -13,6 +12,9 @@ export async function handleWriteData(request, env) {
       const requestBody = await request.json();
       category = requestBody.category;
       foloCookie = typeof requestBody.foloCookie === 'string' ? requestBody.foloCookie : null;
+      if (typeof requestBody.date === 'string' && requestBody.date.trim() !== '') {
+        dateStr = requestBody.date;
+      }
     }
 
     const ingestionResult = await runSourceItemIngestion(env, {
