@@ -1,5 +1,5 @@
 import { getISODate } from './utils/date.js';
-import { escapeHtml, stripHtml } from './utils/html.js';
+import { escapeHtml, normalizeDescriptionText, stripHtml } from './utils/html.js';
 
 function toJsonOrNull(value) {
   return value == null ? null : JSON.stringify(value);
@@ -62,6 +62,8 @@ export function getPublishedDayBounds(dateStr) {
 export function buildSourceItemRecord(item, fetchDate, now = new Date().toISOString()) {
   const meta = item?.source_meta || {};
   const hasRawJson = Object.prototype.hasOwnProperty.call(meta, 'raw_json');
+  const descriptionInput = item?.description || item?.details?.content_html || '';
+  const normalizedDescription = normalizeDescriptionText(descriptionInput, item?.title || '');
 
   return {
     source_type: item?.type || '',
@@ -73,7 +75,7 @@ export function buildSourceItemRecord(item, fetchDate, now = new Date().toISOStr
     author_name: meta.author_name || getFirstAuthorName(item?.authors),
     author_url: meta.author_url || null,
     author_avatar: meta.author_avatar || null,
-    description_text: item?.description || '',
+    description_text: normalizedDescription,
     content_html: item?.details?.content_html || '',
     published_at: item?.published_date || null,
     inserted_at: meta.inserted_at || null,
@@ -98,12 +100,17 @@ export function mapSourceItemRowToUnifiedItem(row) {
   const extra = parseJsonOrNull(row.extra_json);
   const rawJson = parseJsonOrNull(row.raw_json);
 
+  const description = normalizeDescriptionText(
+    row.description_text || row.content_html || '',
+    row.title || '',
+  );
+
   return {
     id: row.source_item_id,
     type: row.source_type,
     url: row.url,
     title: row.title,
-    description: row.description_text || '',
+    description,
     published_date: row.published_at,
     authors: row.author_name || 'Unknown',
     source: row.source_name || 'Unknown source',
@@ -160,8 +167,11 @@ export function mapSourceItemRowToRssItem(row, origin) {
   const reportDate = getSourceItemReportDate(row);
   const link = row?.url || `${origin}/getContentHtml?date=${encodeURIComponent(reportDate)}`;
   const guid = row?.guid || `${row?.source_type || 'unknown'}:${row?.source_item_id || 'unknown'}`;
-  const description = row?.description_text || stripHtml(row?.content_html || '').slice(0, 200);
-  const contentHtml = row?.content_html || `<p>${escapeHtml(row?.description_text || '')}</p>`;
+  const description = normalizeDescriptionText(
+    row?.description_text || row?.content_html || '',
+    title,
+  ) || stripHtml(row?.content_html || '').slice(0, 200);
+  const contentHtml = row?.content_html || `<p>${escapeHtml(description || row?.description_text || '')}</p>`;
 
   return {
     title,

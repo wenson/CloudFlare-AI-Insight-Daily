@@ -120,6 +120,25 @@ test('mapSourceItemRowToUnifiedItem and groupSourceItemsByType rebuild handler p
   assert.equal(grouped.news[0].details.content_html, '<p>新闻正文</p>');
 });
 
+test('mapSourceItemRowToUnifiedItem normalizes dirty description text from stored rows', () => {
+  const unified = mapSourceItemRowToUnifiedItem({
+    source_type: 'news',
+    source_name: 'AI新闻资讯 - 量子位',
+    source_item_id: 'dirty-description-item',
+    title: '10万小时数据集，00后创业灵初智能一战成名',
+    url: 'https://example.com/news/dirty-description',
+    author_name: '量子位',
+    description_text: '<![CDATA[ 鹭羽 2026-04-11 10:07:08 来源：量子位 10万小时数据集，00后创业灵初智能一战成名 鹭羽 发自 凹非寺 量子位 | 公众号 QbitAI 还得是这届00后，强得可怕！一出手，具身智能就被“整顿”得底朝天。 当别人还在Sim2Real打转… ]]>',
+    content_html: '',
+    published_at: '2026-04-11T08:00:00.000Z',
+  });
+
+  assert.equal(
+    unified.description,
+    '10万小时数据集，00后创业灵初智能一战成名 还得是这届00后，强得可怕！一出手，具身智能就被“整顿”得底朝天。 当别人还在Sim2Real打转…',
+  );
+});
+
 test('row to unified to record round-trip preserves author and source_meta fields', () => {
   const row = {
     source_type: 'news',
