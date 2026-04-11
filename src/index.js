@@ -8,7 +8,6 @@ import { handleGenAIContent, handleGenAIPodcastScript, handleGenAIDailyAnalysis 
 import { handleGenAIDailyPage } from './handlers/genAIDailyPage.js';
 import { handleRss } from './handlers/getRss.js';
 import { handleBackfillData } from './handlers/backfillData.js';
-import { handleFoloWebhook } from './handlers/foloWebhook.js';
 import { dataSources } from './dataFetchers.js';
 import { getISODate } from './helpers.js';
 import { handleLogin, isAuthenticated, handleLogout } from './auth.js';
@@ -64,8 +63,6 @@ export default {
             return await handleLogin(request, env);
         } else if (path === '/logout') { // Handle logout path
             return await handleLogout(request, env);
-        } else if (path === '/webhooks/folo') {
-            return await handleFoloWebhook(request, env);
         } else if (path === '/getContent' && request.method === 'GET') {
             return await handleGetContent(request, env);
         } else if (path.startsWith('/rss') && request.method === 'GET') {

@@ -37,8 +37,6 @@ function createEnv() {
     FOLO_COOKIE_KV_KEY: 'folo_cookie',
     FOLO_DATA_API: 'https://example.com/folo',
     FOLO_FILTER_DAYS: '1',
-    FOLO_WEBHOOK_TOKEN: 'webhook-secret',
-    FOLO_WEBHOOK_FEED_MAP: '[]',
   };
 }
 

@@ -132,38 +132,6 @@
     * 默认账号密码：root/toor
 ---
 
-## 🔔 可选：配置 Folo Webhook 定向抓取
-
-如果你希望在 Folo 新条目到达时自动触发抓取，可以配置公开 webhook 路由：
-
-- Worker 回调地址：`https://<your-worker-domain>/webhooks/folo?token=<FOLO_WEBHOOK_TOKEN>`
-- Worker 变量：`FOLO_WEBHOOK_TOKEN`、`FOLO_WEBHOOK_FEED_MAP`
-
-`FOLO_WEBHOOK_FEED_MAP` 需要是 JSON 数组，用于把 webhook 里的 `feedId`/`feedUrl`/`siteUrl` 映射到项目中的数据源：
-
-```json
-[
-  {
-    "sourceKey": "newsAggregator",
-    "sourceType": "news",
-    "feedId": "7495278092438373376"
-  },
-  {
-    "sourceKey": "twitter",
-    "sourceType": "socialMedia",
-    "feedUrl": "https://x.com/openai",
-    "siteUrl": "https://openai.com"
-  }
-]
-```
-
-配置后，`POST /webhooks/folo` 会按映射定位目标源并把匹配结果写入 D1 `source_items`。
-
-> [!WARNING]
-> webhook 使用 URL 查询参数 `token` 进行鉴权，完整 URL 可能出现在浏览器历史、代理日志或监控日志中。请将 `FOLO_WEBHOOK_TOKEN` 视为密钥管理并定期轮换。
-
----
-
 ## 📚 更多文档
 
 *   **🛠️ [技术架构与部署指南](docs/DEPLOYMENT.md)**：深入了解项目的工作原理和详细的部署步骤。

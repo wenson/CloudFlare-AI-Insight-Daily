@@ -74,7 +74,6 @@ sequenceDiagram
 
 | 路由 | 方法 | 作用 | 主要读写 |
 | --- | --- | --- | --- |
-| `/webhooks/folo` | `POST` | 接收 Folo webhook 并按 feed 映射定向抓取 | 读 Folo，写 D1 `source_items` |
 | `/getContentHtml` | `GET` | 返回内容勾选页面 | 从 D1 `source_items` 按发布时间窗口读取 |
 | `/getContent` | `GET` | 返回指定日期的 JSON 内容 | 从 D1 `source_items` 按发布时间窗口读取 |
 | `/writeData` | `POST` | 抓取外部数据源并持久化原始内容 | upsert D1 `source_items` |
@@ -143,4 +142,4 @@ sequenceDiagram
 
 - `/getContent` 与 `/rss` 是只读接口。
 - `/writeData`、`/genAIContent`、`/genAIPodcastScript`、`/genAIDailyAnalysis` 属于状态推进接口。
-- 除 `/login`、`/logout`、`/getContent`、`/rss`、`/webhooks/folo` 外，其余页面型操作受登录态保护。
+- 除 `/login`、`/logout`、`/getContent`、`/rss` 外，其余页面型操作受登录态保护。

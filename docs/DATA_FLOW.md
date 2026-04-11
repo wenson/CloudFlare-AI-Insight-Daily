@@ -4,7 +4,7 @@
 
 ## 一句话结论
 
-本项目的主链路是：`浏览器 → Cloudflare Worker → Folo → Cloudflare D1(source_items) → AI 生成 → Cloudflare D1(daily_reports) → 浏览器结果页 / RSS`；另外支持 `Folo Webhook → /webhooks/folo → 按 feed 映射增量写入 source_items` 的公开补充链路。
+本项目的主链路是：`浏览器 → Cloudflare Worker → Folo → Cloudflare D1(source_items) → AI 生成 → Cloudflare D1(daily_reports) → 浏览器结果页 / RSS`。
 
 ## 总体数据流图
 
@@ -17,13 +17,8 @@ flowchart TD
     U --> C[POST /writeData<br/>携带 foloCookie]
     C --> W
 
-    Q[Folo Webhook] --> R[POST /webhooks/folo?token=...]
-    R --> W
-    W --> S[FOLO_WEBHOOK_FEED_MAP<br/>feedId/feedUrl/siteUrl -> sourceType]
-
     W --> D1[Folo API<br/>FOLO_DATA_API]
     D1 --> E[各 DataSource 抓取并标准化]
-    S --> E
     E --> F[Cloudflare D1<br/>source_items]
 
     U --> G[POST /genAIContent]
@@ -68,11 +63,6 @@ flowchart TD
 - `TWITTER_LIST_ID`
 - `REDDIT_LIST_ID`
 
-Folo webhook 增量抓取还依赖：
-
-- `FOLO_WEBHOOK_TOKEN`
-- `FOLO_WEBHOOK_FEED_MAP`
-
 ## 用户操作时序图
 
 ```mermaid
@@ -91,12 +81,6 @@ sequenceDiagram
     User->>Worker: POST /writeData + foloCookie
     Worker->>Folo: 拉取新闻 / 论文 / 社交内容
     Worker->>D1: upsert 到 source_items
-
-    Folo->>Worker: POST /webhooks/folo?token=...
-    Worker->>Worker: 校验 FOLO_WEBHOOK_TOKEN
-    Worker->>Worker: 按 FOLO_WEBHOOK_FEED_MAP 匹配 feedId/feedUrl/siteUrl
-    Worker->>Folo: 拉取匹配 sourceType 的最新内容
-    Worker->>D1: 仅 upsert 匹配 feed 的 source_items
 
     User->>Worker: POST /genAIContent
     Worker->>D1: 读取选中 source_items
