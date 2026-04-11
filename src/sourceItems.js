@@ -1,3 +1,6 @@
+import { getISODate } from './utils/date.js';
+import { escapeHtml, stripHtml } from './utils/html.js';
+
 function toJsonOrNull(value) {
   return value == null ? null : JSON.stringify(value);
 }
@@ -137,4 +140,35 @@ export function groupSourceItemsByType(items) {
     grouped[type].push(item);
   }
   return grouped;
+}
+
+export function getSourceItemReportDate(row) {
+  if (!row?.published_at) {
+    return '';
+  }
+
+  const publishedDate = new Date(row.published_at);
+  if (Number.isNaN(publishedDate.getTime())) {
+    return '';
+  }
+
+  return getISODate(publishedDate);
+}
+
+export function mapSourceItemRowToRssItem(row, origin) {
+  const title = row?.title || row?.source_name || row?.source_type || 'Untitled';
+  const reportDate = getSourceItemReportDate(row);
+  const link = row?.url || `${origin}/getContentHtml?date=${encodeURIComponent(reportDate)}`;
+  const guid = row?.guid || `${row?.source_type || 'unknown'}:${row?.source_item_id || 'unknown'}`;
+  const description = row?.description_text || stripHtml(row?.content_html || '').slice(0, 200);
+  const contentHtml = row?.content_html || `<p>${escapeHtml(row?.description_text || '')}</p>`;
+
+  return {
+    title,
+    link,
+    guid,
+    description,
+    contentHtml,
+    publishedAt: row?.published_at || null,
+  };
 }

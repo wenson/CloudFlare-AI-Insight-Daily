@@ -10,7 +10,7 @@
 - Folo / Follow API：作为新闻、论文和社交内容来源
 - Gemini 或 OpenAI 兼容接口：生成日报、播客稿和分析内容
 
-项目已不再包含 GitHub 提交链路。当前版本中，`/writeData` 会把内容 upsert 到 D1 `source_items`，`/genAIContent` 会把生成结果 upsert 到 D1 `daily_reports`，`/rss` 直接读取 `daily_reports`。
+项目已不再包含 GitHub 提交链路。当前版本中，`/writeData` 会把内容 upsert 到 D1 `source_items`，`/genAIContent` 会把生成结果 upsert 到 D1 `daily_reports`，而 `/rss` 会直接读取最近 N 天的 `source_items`。
 
 ### 1. 准备环境
 
@@ -148,8 +148,8 @@ npx wrangler deploy --dry-run
 2. 使用 `LOGIN_USERNAME` / `LOGIN_PASSWORD` 登录
 3. 打开 `/getContentHtml?date=YYYY-MM-DD`
 4. 触发一次 `/writeData`
-5. 选择内容生成 `/genAIContent`
-6. 打开 `/rss`，确认同一天的摘要已自动出现
+5. 打开 `/rss`，确认最近抓取内容已出现
+6. 选择内容生成 `/genAIContent`
 7. 再触发 `/genAIPodcastScript` 与 `/genAIDailyAnalysis`
 
 补充说明：
@@ -184,7 +184,7 @@ npx wrangler deploy --dry-run
 - `/writeData` 成功后会把抓取内容 upsert 到 D1 `source_items`
 - `/genAIContent` 生成成功后会自动 upsert 当天日报到 D1 `daily_reports`
 - 同一天重新生成会覆盖正文和 RSS 摘要，不会产生重复 feed 项
-- `/rss?days=7` 默认读取最近 7 天的 D1 `daily_reports` 记录
+- `/rss?days=7` 默认读取最近 7 天的 D1 `source_items` 记录，并按单条内容输出 RSS `<item>`
 
 ### 10. Scheduled ingestion and FOLO cookie secret
 

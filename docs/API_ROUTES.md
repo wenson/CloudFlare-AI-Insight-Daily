@@ -4,7 +4,7 @@
 
 ## 一句话结论
 
-本项目当前接口分为四类：`认证`、`数据抓取/查看`、`AI 生成`、`RSS 输出`。主流程是：`/getContentHtml → /writeData → /genAIContent`，内容数据读写走 D1 `source_items`，生成成功后写入 D1 `daily_reports` 并由 `/rss` 输出摘要。
+本项目当前接口分为四类：`认证`、`数据抓取/查看`、`AI 生成`、`RSS 输出`。主流程是：`/getContentHtml → /writeData → /genAIContent`，内容抓取与浏览走 D1 `source_items`，生成成功后写入 D1 `daily_reports`；`/rss` 直接输出最近 N 天抓取到的 `source_items` 内容流。
 
 ## 总体路由关系图
 
@@ -55,7 +55,7 @@ sequenceDiagram
     W-->>U: 返回播客结果页
 
     U->>W: GET /rss
-    W->>D1: 读取最近 N 天摘要
+    W->>D1: 读取最近 N 天 source_items
     D1-->>W: 返回日报摘要
     W-->>U: 返回 RSS XML
 ```
@@ -92,7 +92,7 @@ sequenceDiagram
 
 | 路由 | 方法 | 作用 | 主要读写 |
 | --- | --- | --- | --- |
-| `/rss` | `GET` | 输出最近 N 天的 RSS Feed | 读 D1 |
+| `/rss` | `GET` | 输出最近 N 天抓取内容的 RSS Feed | 读 D1 `source_items` |
 
 ### 5. Scheduled ingestion
 
@@ -125,7 +125,7 @@ sequenceDiagram
 
 ### 5. RSS 输出
 
-`/rss` 是公开只读接口。它直接从 D1 的日报记录里读取最近 N 天摘要，并拼成 RSS XML。
+`/rss` 是公开只读接口。它直接从 D1 的 `source_items` 里读取最近 N 天抓取内容，并按单条内容拼成 RSS XML，不再依赖 `/genAIContent`。
 
 ## 代码入口
 

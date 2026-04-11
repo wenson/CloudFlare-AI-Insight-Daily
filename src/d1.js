@@ -125,14 +125,61 @@ export async function getDailyReportMetadata(db, reportDate) {
     return result || null;
 }
 
-export async function listDailyReports(db, days) {
+function getReportDateWindowEnd(referenceDate) {
+    return typeof referenceDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(referenceDate)
+        ? referenceDate
+        : new Date().toISOString().slice(0, 10);
+}
+
+function getReportDateWindowStart(referenceDate, days) {
+    const endDate = getReportDateWindowEnd(referenceDate);
+    const [year, month, day] = endDate.split('-').map(Number);
+    const date = new Date(Date.UTC(year, month - 1, day));
+    date.setUTCDate(date.getUTCDate() - (Math.max(1, Number(days) || 1) - 1));
+    return date.toISOString().slice(0, 10);
+}
+
+export async function listDailyReports(db, days, referenceDate) {
+    const safeDays = Math.max(1, Number(days) || 1);
+    const windowEnd = getReportDateWindowEnd(referenceDate);
+    const windowStart = getReportDateWindowStart(windowEnd, safeDays);
     const result = await db.prepare(`
         SELECT report_date, title, rss_html, published_at
         FROM daily_reports
         WHERE rss_html IS NOT NULL AND rss_html != ''
+          AND report_date >= ? AND report_date <= ?
         ORDER BY report_date DESC
         LIMIT ?
-    `).bind(days).all();
+    `).bind(windowStart, windowEnd, safeDays).all();
+
+    return result.results || [];
+}
+
+export async function listSourceItemsForRss(db, {
+    startAt,
+    endAt,
+    limit,
+}) {
+    const safeLimit = Math.max(1, Number(limit) || 500);
+    const result = await db.prepare(`
+        SELECT
+            source_type,
+            source_name,
+            source_item_id,
+            title,
+            url,
+            guid,
+            description_text,
+            content_html,
+            published_at
+        FROM source_items
+        WHERE published_at IS NOT NULL
+          AND published_at != ''
+          AND published_at >= ?
+          AND published_at <= ?
+        ORDER BY published_at DESC
+        LIMIT ?
+    `).bind(startAt, endAt, safeLimit).all();
 
     return result.results || [];
 }

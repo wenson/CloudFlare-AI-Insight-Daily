@@ -4,7 +4,7 @@
 
 ## 一句话结论
 
-本项目的主链路是：`浏览器 → Cloudflare Worker → Folo → Cloudflare D1(source_items) → AI 生成 → Cloudflare D1(daily_reports) → 浏览器结果页 / RSS`。
+本项目的主链路是：`浏览器 → Cloudflare Worker → Folo → Cloudflare D1(source_items) → 浏览器内容页 / RSS`，以及 `source_items → AI 生成 → Cloudflare D1(daily_reports) → 浏览器结果页`。
 
 ## 总体数据流图
 
@@ -35,8 +35,8 @@ flowchart TD
     I --> L[生成播客稿]
     L --> U
 
+    F --> P[GET /rss]
     J --> O[写入 Cloudflare D1<br/>daily_reports]
-    O --> P[GET /rss]
 
     U --> M[POST /genAIDailyAnalysis]
     M --> W
@@ -96,7 +96,7 @@ sequenceDiagram
     Worker-->>User: 展示播客页
 
     User->>Worker: GET /rss
-    Worker->>D1: 查询最近 N 天日报摘要
+    Worker->>D1: 查询最近 N 天 source_items
     D1-->>Worker: 返回结果集
     Worker-->>User: 返回 RSS XML
 ```
@@ -122,7 +122,7 @@ sequenceDiagram
 用于保存抓取与生成两类核心数据：
 
 - `source_items`：抓取后的新闻/论文/社媒原始内容明细
-- `daily_reports`：生成后的日报与 RSS 摘要
+- `daily_reports`：生成后的日报内容与摘要存档
 
 `daily_reports` 里包含：
 
@@ -131,7 +131,7 @@ sequenceDiagram
 - `rss_html`
 - `published_at` / `updated_at`
 
-`/writeData`、`/getContent`、`/getContentHtml`、`/genAIContent` 的内容数据都以 `source_items` 为准；`/rss` 的唯一来源是 `daily_reports`。
+`/writeData`、`/getContent`、`/getContentHtml`、`/genAIContent` 的内容数据都以 `source_items` 为准；`/rss` 现在也直接读取 `source_items`，不再依赖 `daily_reports`。
 
 ## 代码中的关键入口
 

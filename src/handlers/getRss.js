@@ -1,21 +1,26 @@
-import { formatRssDate } from '../utils/date.js';
-import { stripHtml } from '../utils/html.js';
-import { listDailyReports } from '../d1.js';
+import { formatRssDate, getISODate } from '../utils/date.js';
+import { getPublishedWindowBounds, mapSourceItemRowToRssItem } from '../sourceItems.js';
+import { listSourceItemsForRss } from '../d1.js';
 
 export async function handleRss(request, env) {
     const url = new URL(request.url);
     const days = parseInt(url.searchParams.get('days') || '7', 10);
     const safeDays = Number.isFinite(days) && days > 0 ? days : 7;
-    const reports = await listDailyReports(env.DB, safeDays);
+    const bounds = getPublishedWindowBounds(getISODate(), safeDays);
+    const rows = await listSourceItemsForRss(env.DB, {
+        ...bounds,
+        limit: 500,
+    });
+    const items = rows.map((row) => mapSourceItemRowToRssItem(row, url.origin));
 
-    const rssItems = reports.map((item) => `
+    const rssItems = items.map((item) => `
         <item>
           <title><![CDATA[${item.title}]]></title>
-          <link>${url.origin}/getContentHtml?date=${item.report_date}</link>
-          <guid>${item.report_date}</guid>
-          <pubDate>${formatRssDate(new Date(item.published_at))}</pubDate>
-          <content:encoded><![CDATA[${item.rss_html}]]></content:encoded>
-          <description><![CDATA[${stripHtml(item.rss_html).substring(0, 200)}]]></description>
+          <link>${item.link}</link>
+          <guid>${item.guid}</guid>
+          <pubDate>${formatRssDate(new Date(item.publishedAt))}</pubDate>
+          <content:encoded><![CDATA[${item.contentHtml}]]></content:encoded>
+          <description><![CDATA[${item.description}]]></description>
         </item>
       `).join('');
 
@@ -24,7 +29,7 @@ export async function handleRss(request, env) {
   <channel>
     <title>AI洞察日报 RSS Feed</title>
     <link>${url.origin}</link>
-    <description>最近 ${safeDays} 天的 AI 日报摘要</description>
+    <description>最近 ${safeDays} 天抓取内容</description>
     <language>zh-cn</language>
     <lastBuildDate>${formatRssDate(new Date())}</lastBuildDate>
     ${rssItems}
