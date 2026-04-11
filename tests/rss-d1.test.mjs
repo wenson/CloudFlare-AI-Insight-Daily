@@ -192,6 +192,34 @@ test('source-items rss falls back when guid, title, description, or content are 
   assert.match(body, /getContentHtml\?date=2026-04-10/);
 });
 
+test('source-items rss escapes xml-sensitive characters in link and guid fields', async () => {
+  const env = createEnv({
+    rssSourceItemResults: [
+      {
+        source_type: 'news',
+        source_name: 'Query Feed',
+        source_item_id: 'query-1',
+        title: 'Query title',
+        url: 'https://example.com/article?foo=1&bar=2',
+        guid: 'https://example.com/article?foo=1&bar=2',
+        description_text: 'Query summary',
+        content_html: '<p>Query content</p>',
+        published_at: '2026-04-10T08:00:00.000Z',
+      },
+    ],
+  });
+
+  const response = await worker.fetch(
+    new Request('https://example.com/rss?days=7'),
+    env,
+  );
+
+  assert.equal(response.status, 200);
+  const body = await response.text();
+  assert.match(body, /<link>https:\/\/example.com\/article\?foo=1&amp;bar=2<\/link>/);
+  assert.match(body, /<guid>https:\/\/example.com\/article\?foo=1&amp;bar=2<\/guid>/);
+});
+
 test('listDailyReports filters by the requested recent day window instead of returning any latest N rows', async () => {
   const db = createDb({
     dailyReportResults: [

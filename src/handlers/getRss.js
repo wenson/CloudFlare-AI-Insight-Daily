@@ -1,4 +1,5 @@
 import { formatRssDate, getISODate } from '../utils/date.js';
+import { escapeHtml } from '../utils/html.js';
 import { getPublishedWindowBounds, mapSourceItemRowToRssItem } from '../sourceItems.js';
 import { listSourceItemsForRss } from '../d1.js';
 
@@ -16,8 +17,8 @@ export async function handleRss(request, env) {
     const rssItems = items.map((item) => `
         <item>
           <title><![CDATA[${item.title}]]></title>
-          <link>${item.link}</link>
-          <guid>${item.guid}</guid>
+          <link>${escapeHtml(item.link)}</link>
+          <guid>${escapeHtml(item.guid)}</guid>
           <pubDate>${formatRssDate(new Date(item.publishedAt))}</pubDate>
           <content:encoded><![CDATA[${item.contentHtml}]]></content:encoded>
           <description><![CDATA[${item.description}]]></description>
